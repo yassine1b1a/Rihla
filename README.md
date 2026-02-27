@@ -202,3 +202,4 @@ Rihla directly addresses the AINC'26 tourism innovation mandate:
 ## 📄 License
 
 MIT © Rihla Team — Built for AINC'26 AI Innovation Challenge 2026
+# Rihla
