@@ -1,9 +1,0 @@
-{
-  "/auth/page": "app/auth/page.js",
-  "/explore/page": "app/explore/page.js",
-  "/heritage/page": "app/heritage/page.js",
-  "/api/ai/heritage/route": "app/api/ai/heritage/route.js",
-  "/sustainability/page": "app/sustainability/page.js",
-  "/api/ai/sustainability/route": "app/api/ai/sustainability/route.js",
-  "/dashboard/page": "app/dashboard/page.js"
-}

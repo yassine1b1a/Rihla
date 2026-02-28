@@ -1,98 +1,131 @@
-// lib/youtube.ts
-import { VideoResult } from "@/types";
-
-// Simple in-memory cache with TTL
-interface CacheEntry {
-  videos: VideoResult[];
-  timestamp: number;
+interface YouTubeVideo {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  channelTitle: string;
+  publishedAt: string;
+  duration?: string;
 }
 
-const videoCache = new Map<string, CacheEntry>();
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+class YouTubeService {
+  private apiKey: string;
+  private baseUrl = 'https://www.googleapis.com/youtube/v3';
+  private cache: Map<string, { data: any; timestamp: number }> = new Map();
+  private cacheDuration = 3600000; // 1 heure
 
-export async function searchYouTubeVideos(
-  query: string, 
-  maxResults: number = 2
-): Promise<VideoResult[]> {
-  // Check cache first
-  const cacheKey = `${query}-${maxResults}`;
-  const cached = videoCache.get(cacheKey);
-  
-  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-    console.log("🎥 Using cached videos for:", query);
-    return cached.videos;
+  constructor() {
+    this.apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '';
+    if (!this.apiKey) {
+      console.warn('YouTube API key is missing');
+    }
   }
 
-  try {
-    console.log("🎥 Fetching YouTube videos for:", query);
+  private async fetchWithCache(url: string, cacheKey: string) {
+    // Vérifier le cache
+    if (this.cache.has(cacheKey)) {
+      const { data, timestamp } = this.cache.get(cacheKey)!;
+      if (Date.now() - timestamp < this.cacheDuration) {
+        return data;
+      }
+    }
+
+    // Faire la requête
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`YouTube API error: ${response.status}`);
+      const data = await response.json();
+      
+      // Mettre en cache
+      this.cache.set(cacheKey, { data, timestamp: Date.now() });
+      return data;
+    } catch (error) {
+      console.error('YouTube API fetch error:', error);
+      throw error;
+    }
+  }
+
+  // Rechercher des vidéos pour une destination
+  async getVideosForDestination(destination: string, country: string, maxResults: number = 6): Promise<YouTubeVideo[]> {
+    const cacheKey = `destination_${destination}_${country}`;
+    const queries = [
+      `${destination} ${country} travel guide`,
+      `${destination} tourism`,
+      `visit ${destination} ${country}`,
+      `things to do in ${destination}`,
+      `${destination} attractions`,
+      `${destination} vlog`
+    ];
+
+    // Prendre une requête aléatoire pour varier les résultats
+    const query = queries[Math.floor(Math.random() * queries.length)];
     
-    const response = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}&maxResults=${maxResults}`);
-    
-    if (!response.ok) {
-      console.warn(`YouTube API returned ${response.status}`);
+    try {
+      const url = `${this.baseUrl}/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=${maxResults}&key=${this.apiKey}`;
+      const data = await this.fetchWithCache(url, cacheKey);
+
+      // Récupérer les durées
+      const videoIds = data.items.map((item: any) => item.id.videoId).join(',');
+      const durations = await this.getVideoDurations(videoIds);
+
+      return data.items.map((item: any, index: number) => ({
+        id: item.id.videoId,
+        title: item.snippet.title,
+        description: item.snippet.description,
+        thumbnail: item.snippet.thumbnails.medium.url,
+        channelTitle: item.snippet.channelTitle,
+        publishedAt: item.snippet.publishedAt,
+        duration: durations[index] || '00:00'
+      }));
+    } catch (error) {
+      console.error('Error fetching destination videos:', error);
       return [];
     }
-    
-    const data = await response.json();
-    
-    // Cache the results
-    videoCache.set(cacheKey, {
-      videos: data.videos || [],
-      timestamp: Date.now()
-    });
-    
-    return data.videos || [];
-  } catch (error) {
-    console.error("Error fetching YouTube videos:", error);
-    return [];
   }
-}
 
-// Helper to create search query for a destination
-export function createDestinationSearchQuery(
-  destinationName: string,
-  country: string,
-  activity?: string
-): string {
-  // Clean up the destination name
-  const cleanName = destinationName.replace(/[^\w\s]/gi, ' ').trim();
-  
-  // Create more effective search queries based on activity
-  const activityLower = activity?.toLowerCase() || '';
-  
-  if (activityLower.includes('eat') || activityLower.includes('food') || activityLower.includes('restaurant')) {
-    return `${cleanName} ${country} food guide`;
-  } else if (activityLower.includes('beach') || activityLower.includes('sea')) {
-    return `${cleanName} ${country} beach travel`;
-  } else if (activityLower.includes('museum') || activityLower.includes('historical')) {
-    return `${cleanName} ${country} museum tour`;
-  } else if (activityLower.includes('market') || activityLower.includes('souk')) {
-    return `${cleanName} ${country} market shopping`;
-  } else {
-    return `${cleanName} ${country} travel guide`;
-  }
-}
-
-// Batch fetch with delay to avoid rate limiting
-export async function batchFetchVideos(
-  destinations: { name: string; country: string; activity?: string }[]
-): Promise<Map<string, VideoResult[]>> {
-  const results = new Map<string, VideoResult[]>();
-  
-  // Process with delay between requests
-  for (const dest of destinations) {
+  // Obtenir les durées des vidéos
+  private async getVideoDurations(videoIds: string): Promise<string[]> {
+    if (!videoIds) return [];
+    
     try {
-      const query = createDestinationSearchQuery(dest.name, dest.country, dest.activity);
-      const videos = await searchYouTubeVideos(query, 2);
-      results.set(dest.name, videos);
+      const url = `${this.baseUrl}/videos?part=contentDetails&id=${videoIds}&key=${this.apiKey}`;
+      const data = await this.fetchWithCache(url, `durations_${videoIds}`);
       
-      // Small delay to avoid overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, 300));
+      return data.items.map((item: any) => {
+        const duration = item.contentDetails.duration;
+        return this.formatDuration(duration);
+      });
     } catch (error) {
-      console.error(`Failed to fetch videos for ${dest.name}:`, error);
-      results.set(dest.name, []);
+      console.error('Error fetching durations:', error);
+      return [];
     }
   }
-  
-  return results;
+
+  // Formater la durée ISO 8601
+  private formatDuration(isoDuration: string): string {
+    const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    
+    const hours = match?.[1] ? parseInt(match[1]) : 0;
+    const minutes = match?.[2] ? parseInt(match[2]) : 0;
+    const seconds = match?.[3] ? parseInt(match[3]) : 0;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+  }
+
+  // Obtenir des vidéos par catégorie (culture, aventure, gastronomie)
+  async getVideosByCategory(destination: string, country: string, category: string): Promise<YouTubeVideo[]> {
+    const query = `${destination} ${country} ${category}`;
+    return this.getVideosForDestination(destination, country, 4);
+  }
+
+  // Nettoyer le cache
+  clearCache() {
+    this.cache.clear();
+  }
 }
+
+export const youtubeService = new YouTubeService();

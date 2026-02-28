@@ -5,10 +5,11 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   Sparkles, ChevronRight, ChevronLeft, MapPin, Clock, Leaf, Star, 
   Download, Share2, RefreshCw, Sun, Utensils, BedDouble, Info,
-  AlertCircle, CheckCircle, XCircle, Loader2
+  AlertCircle, CheckCircle, XCircle, Loader2, Youtube, Film, Play, User, X
 } from "lucide-react";
 import { COUNTRIES, TRAVEL_INTERESTS } from "@/lib/data/destinations";
 import { Navbar } from "@/components/layout/Navbar";
+import { youtubeService } from "@/lib/youtube";
 import type { Itinerary, ItineraryDay, Destination } from "@/types";
 
 // Styles and budgets (unchanged)
@@ -27,9 +28,8 @@ const BUDGETS = [
   { id: "luxury",     label: "Luxury", sub: "$150+/day" },
 ];
 
-// DayCard component (unchanged from your working version)
+// DayCard component (unchanged)
 function DayCard({ day, isOpen, onToggle }: { day: ItineraryDay; isOpen: boolean; onToggle: () => void }) {
-  // Safely access day properties with defaults
   const dayNumber = day?.day || 0;
   const dayTitle = day?.title || "Day " + dayNumber;
   const dayTheme = day?.theme || "Exploration";
@@ -73,7 +73,6 @@ function DayCard({ day, isOpen, onToggle }: { day: ItineraryDay; isOpen: boolean
             className="overflow-hidden"
           >
             <div className="px-5 pb-5 border-t border-white/5 pt-4 space-y-3">
-              {/* Stops */}
               {destinations.length > 0 ? (
                 destinations.map((stop, i) => (
                   <div key={i} className="flex gap-3">
@@ -94,7 +93,6 @@ function DayCard({ day, isOpen, onToggle }: { day: ItineraryDay; isOpen: boolean
                 <div className="text-sm text-stone-mist italic">No destinations specified for this day.</div>
               )}
 
-              {/* Tip & accommodation */}
               {dayTips && (
                 <div className="flex gap-2 p-3 rounded-lg mt-2"
                   style={{ background: "rgba(232,201,138,0.07)", border: "1px solid rgba(232,201,138,0.15)" }}>
@@ -109,6 +107,168 @@ function DayCard({ day, isOpen, onToggle }: { day: ItineraryDay; isOpen: boolean
               )}
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// YouTube Video Component
+function ItineraryVideos({ destination, country }: { destination: string; country: string }) {
+  const [videos, setVideos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedVideo, setSelectedVideo] = useState<any>(null);
+  const [category, setCategory] = useState("all");
+
+  const categories = [
+    { id: "all", label: "All", icon: Film },
+    { id: "travel guide", label: "Guides", icon: Play },
+    { id: "culture", label: "Culture", icon: "🏛️" },
+    { id: "food", label: "Food", icon: "🍽️" },
+    { id: "adventure", label: "Adventure", icon: "🏔️" },
+  ];
+
+  useEffect(() => {
+    const loadVideos = async () => {
+      setLoading(true);
+      try {
+        let results;
+        if (category === "all") {
+          results = await youtubeService.getVideosForDestination(destination, country, 8);
+        } else {
+          results = await youtubeService.getVideosByCategory?.(destination, country, category) || 
+                   await youtubeService.getVideosForDestination(destination, country, 4);
+        }
+        setVideos(results);
+      } catch (error) {
+        console.error("Error loading videos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadVideos();
+  }, [destination, country, category]);
+
+  if (videos.length === 0 && !loading) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-8 p-6 rounded-2xl"
+      style={{ background: "rgba(28,35,48,0.8)", border: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Youtube className="w-5 h-5 text-red-500" />
+          <h3 className="font-heading font-semibold text-lg text-foreground">
+            Discover {destination} on YouTube
+          </h3>
+        </div>
+        
+        {/* Filters */}
+        <div className="flex gap-1 p-1 rounded-lg" style={{ background: "#0F1419" }}>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setCategory(cat.id)}
+              className="px-3 py-1.5 rounded-lg text-xs font-heading transition-all flex items-center gap-1"
+              style={{
+                background: category === cat.id ? "rgba(200,75,49,0.3)" : "transparent",
+                color: category === cat.id ? "#E8694A" : "#7A6E62",
+              }}
+            >
+              {typeof cat.icon === 'string' ? cat.icon : <cat.icon className="w-3 h-3" />}
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Video Grid */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-terra-light" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {videos.map((video) => (
+            <motion.div
+              key={video.id}
+              whileHover={{ y: -4 }}
+              className="rounded-xl overflow-hidden cursor-pointer group"
+              style={{ background: "#0F1419", border: "1px solid rgba(255,255,255,0.06)" }}
+              onClick={() => setSelectedVideo(video)}
+            >
+              <div className="relative aspect-video">
+                <img 
+                  src={video.thumbnail} 
+                  alt={video.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Play className="w-8 h-8 text-white" />
+                </div>
+                {video.duration && (
+                  <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-black/80 text-white">
+                    {video.duration}
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-2">
+                <h4 className="font-heading font-medium text-xs text-foreground line-clamp-2 mb-1">
+                  {video.title}
+                </h4>
+                <div className="flex items-center gap-1 text-[10px] text-stone-mist">
+                  <User className="w-2.5 h-2.5" />
+                  <span className="truncate">{video.channelTitle}</span>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Video Modal */}
+      <AnimatePresence>
+        {selectedVideo && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.95)" }}
+            onClick={() => setSelectedVideo(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative w-full max-w-4xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="aspect-video rounded-xl overflow-hidden">
+                <iframe
+                  src={`https://www.youtube.com/embed/${selectedVideo.id}?autoplay=1`}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              
+              <div className="mt-3 text-white">
+                <h3 className="font-heading font-semibold text-lg">{selectedVideo.title}</h3>
+                <p className="text-sm text-stone-mist">{selectedVideo.channelTitle}</p>
+              </div>
+
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="absolute -top-10 right-0 text-white hover:text-terra-light transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </motion.div>
@@ -190,7 +350,6 @@ export default function ItineraryPage() {
 
   const updateForm = (key: string, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
-    // Clear validation error for this field
     if (validationErrors[key]) {
       setValidationErrors(prev => {
         const newErrors = { ...prev };
@@ -211,7 +370,6 @@ export default function ItineraryPage() {
 
   const STEPS = ["Destination", "Style", "Interests", "Review"];
 
-  // FIXED: useCallback to prevent recreation on every render
   const validateStep = useCallback((stepIndex: number): boolean => {
     const errors: {[key: string]: string} = {};
     
@@ -233,7 +391,6 @@ export default function ItineraryPage() {
     return Object.keys(errors).length === 0;
   }, [form.country, form.days, form.style, form.budget, form.interests.length]);
 
-  // FIXED: useMemo to cache the validation result
   const isValid = useMemo(() => {
     return validateStep(step);
   }, [step, validateStep]);
@@ -266,13 +423,11 @@ export default function ItineraryPage() {
         throw new Error(data.error || data.details || "Failed to generate itinerary");
       }
 
-      // Validate the response structure
       if (!data.days || !Array.isArray(data.days)) {
         console.error("Invalid response structure:", data);
         throw new Error("Invalid itinerary format received from AI");
       }
 
-      // Ensure each day has the required fields
       const validatedDays = data.days.map((day: any, index: number) => ({
         day: day.day || index + 1,
         title: day.title || `Day ${index + 1}`,
@@ -288,7 +443,6 @@ export default function ItineraryPage() {
         })) : []
       }));
 
-      // Construct full itinerary object
       const itinerary: Itinerary = {
         id: crypto.randomUUID(),
         user_id: "",
@@ -333,7 +487,6 @@ export default function ItineraryPage() {
   }
 
   if (result) {
-    // Safely access result properties
     const title = result.title || `${result.duration_days}-Day Journey Through ${result.country}`;
     const highlights = Array.isArray(result.ai_highlights) ? result.ai_highlights : [];
     const days = Array.isArray(result.days) ? result.days : [];
@@ -443,6 +596,9 @@ export default function ItineraryPage() {
               </ul>
             </motion.div>
           )}
+
+          {/* NEW: YouTube Videos Section */}
+          <ItineraryVideos destination={result.country} country={result.country} />
         </div>
       </div>
     );
@@ -452,7 +608,6 @@ export default function ItineraryPage() {
   return (
     <div className="min-h-screen bg-[#0F1419]">
       <Navbar />
-      {/* Background */}
       <div className="fixed inset-0 zellige-bg opacity-100 pointer-events-none" />
       <div className="fixed inset-0 pointer-events-none"
         style={{ background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(200,75,49,0.12), transparent)" }} />
@@ -489,7 +644,7 @@ export default function ItineraryPage() {
           ))}
         </div>
 
-        {/* Step content */}
+        {/* Step content (rest of your wizard remains the same) */}
         <motion.div
           key={step}
           initial={{ opacity: 0, x: 20 }}
