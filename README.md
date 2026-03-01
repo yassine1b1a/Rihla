@@ -37,7 +37,7 @@ Rihla tackles four interconnected tourism challenges with dedicated AI solutions
 - Supports English, French, Arabic prompts
 
 ### 3. 🏛️ Heritage Recognition AI (`/heritage`)
-- Two modes: **Describe it** (text) or **Uploaf Image**
+- Two modes: **Describe it** (text) or **Upload Image**
 - Identifies ruins, mosques, medinas, archaeological sites, monuments
 - Returns: site name, civilization, period, historical context, fun facts, visitor tips, nearby sites
 - Curated heritage library: El Jem amphitheatre, Carthage, Kairouan Great Mosque, Bardo Museum
