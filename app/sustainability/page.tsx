@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Leaf, BarChart3, Users, Droplets, Wind, TreePine, AlertTriangle, CheckCircle, RefreshCw, TrendingDown, Globe } from "lucide-react";
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { DESTINATIONS } from "@/lib/data/destinations";
 import { Navbar } from "@/components/layout/Navbar";
 

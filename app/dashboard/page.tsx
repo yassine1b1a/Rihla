@@ -3,26 +3,26 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Compass, Sparkles, Camera, Leaf, Brain, ArrowRight, MapPin, LogOut, User } from "lucide-react";
+import { Compass, Sparkles, Camera, Leaf, Brain, ArrowRight, MapPin, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 const TOOLS = [
-  { href: "/itinerary",     icon: Sparkles, label: "Plan a Trip",       desc: "AI itinerary generator",          color: "#C84B31" },
-  { href: "/explore",       icon: Brain,    label: "AI Travel Guide",   desc: "Chat with your travel expert",    color: "#E8C98A" },
-  { href: "/heritage",      icon: Camera,   label: "Heritage Guide",    desc: "Identify & explore sites",        color: "#1A7A6E" },
-  { href: "/sustainability", icon: Leaf,    label: "Eco Dashboard",     desc: "Crowd & sustainability insights", color: "#4ADE80" },
+  { href: "/itinerary",      icon: Sparkles, label: "Plan a Trip",         desc: "AI itinerary generator",                color: "#C84B31" },
+  { href: "/explore",        icon: Brain,    label: "AI Travel Guide",     desc: "Chat with your travel expert",          color: "#E8C98A" },
+  { href: "/heritage",       icon: Camera,   label: "Heritage Guide",      desc: "Identify & explore sites",              color: "#1A7A6E" },
+  { href: "/sustainability", icon: Leaf,     label: "Eco Dashboard",       desc: "Crowd & sustainability insights",       color: "#4ADE80" },
 ];
 
 export default function DashboardPage() {
-  const [user, setUser]     = useState<any>(null);
+  const [user, setUser]       = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const router  = useRouter();
   const sb      = createClient();
 
   useEffect(() => {
     sb.auth.getUser().then(({ data }) => { setUser(data.user); setLoading(false); });
-  }, []);
+  }, [sb]);
 
   const signOut = async () => { await sb.auth.signOut(); router.push("/"); };
 
@@ -48,7 +48,8 @@ export default function DashboardPage() {
           <div className="text-sm text-stone-mist font-heading hidden sm:block">
             {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Traveller"}
           </div>
-          <button onClick={signOut} className="p-2 rounded-lg text-stone-mist hover:text-foreground transition-colors hover:bg-white/5">
+          <button onClick={signOut} title="Sign Out"
+            className="p-2 rounded-lg text-stone-mist hover:text-foreground transition-colors hover:bg-white/5">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -60,13 +61,13 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3 mb-2">
             <span className="text-3xl">🧭</span>
             <h1 className="font-display text-4xl text-foreground">
-              Marhaba,{" "}
+              Welcome,{" "}
               <span className="text-terra-gradient">
                 {user?.user_metadata?.full_name?.split(" ")[0] || "Explorer"}
               </span>
             </h1>
           </div>
-          <p className="text-stone-mist ml-14">Where will your next journey take you?</p>
+          <p className="text-stone-mist ml-14">Plan your next journey through North Africa and the Maghreb</p>
         </motion.div>
 
         {/* Tools grid */}
@@ -106,7 +107,7 @@ export default function DashboardPage() {
           <p className="text-xs text-stone-mist text-center font-mono mb-4">Every journey begins with a single step</p>
           <div className="flex flex-wrap gap-2 justify-center">
             {["Tunis Medina", "Sahara Douz", "Sidi Bou Said", "Carthage", "Djerba", "Kairouan"].map(d => (
-              <Link key={d} href={`/explore`}>
+              <Link key={d} href="/explore">
                 <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                   className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full cursor-pointer transition-all font-heading font-medium"
                   style={{ background: "rgba(200,75,49,0.1)", color: "#E8694A", border: "1px solid rgba(200,75,49,0.2)" }}>

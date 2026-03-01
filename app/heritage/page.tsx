@@ -255,8 +255,8 @@ export default function HeritagePage() {
   // ── identify ───────────────────────────────────────────────────────────────
 
   const identify = async () => {
-    if (mode === "describe" && !input.trim()) { setError("Please enter a description"); return; }
-    if (mode === "upload"   && !imageFile)    { setError("Please select an image to upload"); return; }
+    if (mode === "describe" && !input.trim()) { setError("Please describe the site you see"); return; }
+    if (mode === "upload"   && !imageFile)    { setError("Please upload an image"); return; }
 
     setLoading(true);
     setError("");
@@ -469,7 +469,7 @@ export default function HeritagePage() {
                 {loading ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Analysing…
+                    Analysing...
                   </>
                 ) : (
                   <>

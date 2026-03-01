@@ -158,7 +158,6 @@ function Stat({ value, label, icon: Icon }: any) {
 }
 
 export default function HomePage() {
-  // Add comprehensive debugging
   console.log("🏠 HomePage rendering started");
   
   const heroRef = useRef<HTMLDivElement>(null);
@@ -168,7 +167,6 @@ export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   
-  // Debug all hooks and state
   console.log("🏠 Hooks initialized:", {
     hasHeroRef: !!heroRef.current,
     scrollYProgress: !!scrollYProgress,
@@ -180,15 +178,12 @@ export default function HomePage() {
     console.log("🏠 Component mounted at:", new Date().toISOString());
     setMounted(true);
     
-    // Check for any API calls that might be happening automatically
     const checkForApiCalls = () => {
-      // Monitor fetch requests
       const originalFetch = window.fetch;
       window.fetch = async (...args) => {
         const url = args[0]?.toString() || '';
         console.log("🌐 Fetch detected:", url);
         
-        // If it's the itinerary API, log it
         if (url.includes('/api/ai/itinerary')) {
           console.warn("⚠️ Unexpected API call to /api/ai/itinerary detected on homepage!");
           console.log("Request details:", args[1]);
@@ -205,7 +200,6 @@ export default function HomePage() {
         }
       };
 
-      // Cleanup
       return () => {
         window.fetch = originalFetch;
       };
@@ -215,7 +209,6 @@ export default function HomePage() {
     return cleanup;
   }, []);
 
-  // Try-catch block for the entire render
   try {
     console.log("🏠 Rendering with mounted =", mounted);
     
@@ -337,10 +330,15 @@ export default function HomePage() {
               transition={{ delay: 1 }}
               className="flex flex-wrap items-center justify-center gap-6 mt-10 text-xs text-stone-mist"
             >
-              {["10+ Tunisian Destinations", "UNESCO Heritage Sites", "Sustainable Travel Certified", "Arabic · French · English"].map((t) => (
-                <div key={t} className="flex items-center gap-1.5">
+              {[
+                "10+ Tunisian Destinations",
+                "UNESCO Heritage Sites",
+                "Sustainable Travel Certified",
+                "Arabic · French · English"
+              ].map((text) => (
+                <div key={text} className="flex items-center gap-1.5">
                   <span className="w-1 h-1 rounded-full bg-terra-DEFAULT" />
-                  {t}
+                  {text}
                 </div>
               ))}
             </motion.div>
@@ -535,28 +533,38 @@ export default function HomePage() {
                 <p className="text-stone-mist text-sm max-w-xs">
                   AI-powered tourism ecosystem for Tunisia, North Africa and the Maghreb.
                 </p>
-                <p className="text-xs text-stone-light mt-3 font-mono opacity-50">
-                  Submitted to AINC'26 — AI Innovation Challenge
-                </p>
               </div>
               <div className="grid grid-cols-2 gap-8 text-sm">
                 <div>
                   <div className="text-foreground font-heading font-semibold mb-3">Explore</div>
-                  {[["Itinerary Planner", "/itinerary"], ["AI Travel Guide", "/explore"], ["Heritage Guide", "/heritage"], ["Sustainability", "/sustainability"]].map(([l, h]) => (
-                    <Link key={l} href={h}><div className="text-stone-mist hover:text-terra-light transition-colors py-1 cursor-pointer">{l}</div></Link>
+                  {[
+                    ["AI Itinerary Planner", "/itinerary"],
+                    ["AI Travel Guide", "/explore"],
+                    ["Heritage Guide", "/heritage"],
+                    ["Sustainability", "/sustainability"]
+                  ].map(([l, h]) => (
+                    <Link key={l} href={h as string}>
+                      <div className="text-stone-mist hover:text-terra-light transition-colors py-1 cursor-pointer">{l}</div>
+                    </Link>
                   ))}
                 </div>
                 <div>
                   <div className="text-foreground font-heading font-semibold mb-3">Platform</div>
-                  {[["Sign In", "/auth"], ["Dashboard", "/dashboard"], ["About Rihla", "#"], ["AINC'26", "#"]].map(([l, h]) => (
-                    <Link key={l} href={h}><div className="text-stone-mist hover:text-terra-light transition-colors py-1 cursor-pointer">{l}</div></Link>
+                  {[
+                    ["Sign In", "/auth"],
+                    ["Dashboard", "/dashboard"],
+                    ["About Rihla", "#"],
+                  ].map(([l, h]) => (
+                    <Link key={l} href={h as string}>
+                      <div className="text-stone-mist hover:text-terra-light transition-colors py-1 cursor-pointer">{l}</div>
+                    </Link>
                   ))}
                 </div>
               </div>
             </div>
             <div className="border-t pt-6 flex flex-col md:flex-row justify-between items-center gap-3 text-xs text-stone-mist font-mono"
               style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-              <span>© 2026 Rihla — AI Tourism Ecosystem. Built for AINC'26.</span>
+              <span>© 2026 Rihla — All rights reserved</span>
               <span>Tunisia · Morocco · Algeria · Egypt · Jordan</span>
             </div>
           </div>
