@@ -43,14 +43,21 @@ export async function POST(req: NextRequest) {
     const imageUrl = `data:${imageFile.type};base64,${base64Image}`;
 
     console.log("👁️ Using NVIDIA Nemotron Nano 12B V2 VL");
-    console.log("Image size:", Math.round(base64Image.length / 1024), "KB");
 
     const completion = await openrouter.chat.completions.create({
       model: "nvidia/nemotron-nano-12b-v2-vl:free",
       messages: [
         {
           role: "system",
-          content: `You are Rihla AI, a heritage recognition expert. You MUST respond with ONLY valid JSON. No other text, no explanations, no markdown. Just pure JSON.`
+          content: `You are Rihla AI, an expert in North African and Maghrebi heritage sites. 
+          You have perfect knowledge of all historical sites in Tunisia, Morocco, Algeria, Egypt, and Libya.
+          
+          CRITICAL INSTRUCTIONS:
+          1. You MUST identify the EXACT heritage site shown in the image
+          2. For Tunisian sites: know that Dougga is in Béja, El Jem is in El Jem, Carthage is in Tunis, etc.
+          3. Return ONLY valid JSON with no additional text, explanations, or markdown
+          4. If you recognize the site, provide accurate historical information
+          5. Confidence should reflect how sure you are (70-95% for confident identifications)`
         },
         {
           role: "user",
@@ -63,27 +70,42 @@ export async function POST(req: NextRequest) {
             },
             {
               type: "text",
-              text: `Identify this heritage site in ${country}. Return ONLY this JSON structure with NO additional text:
-{
-  "site_name": "Name of the site",
-  "confidence": 85,
-  "country": "${country}",
-  "city": "City name",
-  "period": "Historical period",
-  "civilization": "Civilization name",
-  "description": "Detailed description",
-  "historical_context": "Historical context",
-  "fun_facts": ["Fact 1", "Fact 2", "Fact 3"],
-  "visitor_tips": "Practical tips",
-  "nearby_sites": ["Site 1", "Site 2"],
-  "best_time_to_visit": "Best time"
-}`,
+              text: `Analyze this image and identify the heritage site. This image was taken in or around ${country}.
+
+              First, determine if this is:
+              - A Roman/Ancient site (amphitheatre, columns, ruins, temples)
+              - An Islamic site (mosque, minaret, medina, zaouia)
+              - A Berber/indigenous site (ksour, cave dwellings, granaries)
+              - A natural landmark or other
+
+              Then, identify the SPECIFIC site name. For example:
+              - If you see a massive Roman amphitheatre with three levels of arches in Tunisia → "Amphitheatre of El Jem"
+              - If you see a blue and white village on a cliff near Tunis → "Sidi Bou Said"
+              - If you see a large mosque with a square minaret in central Tunisia → "Great Mosque of Kairouan"
+              - If you see Roman columns and ruins by the sea near Tunis → "Carthage Ruins"
+              - If you see a well-preserved Roman temple complex in northwestern Tunisia → "Dougga"
+
+              Return ONLY this exact JSON structure with NO other text:
+              {
+                "site_name": "Full name of the site (be specific)",
+                "confidence": 85,
+                "country": "${country}",
+                "city": "Exact city/location",
+                "period": "Historical period (e.g., 3rd century CE, 8th century, Punic era)",
+                "civilization": "Civilization that built it (Roman, Punic, Aghlabid, Andalusian, etc.)",
+                "description": "Detailed 2-3 sentence description of what you see in the image",
+                "historical_context": "Brief historical significance (2-3 sentences)",
+                "fun_facts": ["Fact 1 about the site", "Fact 2 about the site", "Fact 3 about the site"],
+                "visitor_tips": "Practical advice for visitors",
+                "nearby_sites": ["Another site 1", "Another site 2"],
+                "best_time_to_visit": "Season or months recommendation"
+              }`,
             },
           ],
         },
       ],
-      max_tokens: 1000,
-      temperature: 0.3, // Plus bas pour plus de précision
+      max_tokens: 1200,
+      temperature: 0.3,
     });
 
     if (!completion.choices?.[0]?.message?.content) {
@@ -91,7 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     const response = completion.choices[0].message.content;
-    console.log("👁️ Raw response:", response.substring(0, 200) + "...");
+    console.log("👁️ Raw response:", response.substring(0, 300) + "...");
 
     // Nettoyer et parser le JSON
     try {
@@ -106,7 +128,11 @@ export async function POST(req: NextRequest) {
       const lastBrace = jsonContent.lastIndexOf('}');
       
       if (firstBrace === -1 || lastBrace === -1) {
-        throw new Error("No JSON object found");
+        console.error("No JSON object found in response");
+        return NextResponse.json(
+          { error: "Invalid response format from AI" },
+          { status: 500 }
+        );
       }
       
       jsonContent = jsonContent.substring(firstBrace, lastBrace + 1);
@@ -114,41 +140,33 @@ export async function POST(req: NextRequest) {
       // Parser le JSON
       const parsed = JSON.parse(jsonContent);
       
-      // Construire la réponse finale
-      return NextResponse.json({
-        site_name: parsed.site_name || "Unknown Site",
-        confidence: parsed.confidence || 70,
-        country: parsed.country || country,
-        city: parsed.city || "Unknown",
-        period: parsed.period || "Historical period",
-        civilization: parsed.civilization || "Ancient",
-        description: parsed.description || "No description available",
-        historical_context: parsed.historical_context || "Historical context not available",
-        fun_facts: Array.isArray(parsed.fun_facts) ? parsed.fun_facts : [],
-        visitor_tips: parsed.visitor_tips || "Visit during daylight hours",
-        nearby_sites: Array.isArray(parsed.nearby_sites) ? parsed.nearby_sites : [],
-        best_time_to_visit: parsed.best_time_to_visit || "Spring or Autumn"
-      });
+      // Valider que les champs essentiels sont présents
+      if (!parsed.site_name || parsed.site_name === "Unknown" || parsed.site_name === "Heritage Site") {
+        console.error("AI could not identify the site");
+        return NextResponse.json(
+          { 
+            site_name: "Site non identifié",
+            description: "L'IA n'a pas pu identifier ce site avec certitude. Veuillez réessayer avec une image plus claire ou utiliser la description textuelle.",
+            confidence: 40,
+            country: country,
+            historical_context: "Analyse non concluante",
+            fun_facts: [],
+            visitor_tips: "Essayez de prendre une photo plus claire ou d'ajouter une description",
+            nearby_sites: []
+          }
+        );
+      }
+      
+      return NextResponse.json(parsed);
       
     } catch (parseError) {
       console.error("❌ JSON parsing failed:", parseError);
       console.error("Raw response:", response);
       
-      // Fallback: extraire les informations manuellement
-      return NextResponse.json({
-        site_name: extractInfo(response, "site_name") || "Heritage Site",
-        confidence: 70,
-        country: country,
-        city: extractInfo(response, "city") || "Unknown",
-        period: extractInfo(response, "period") || "Historical period",
-        civilization: extractInfo(response, "civilization") || "Ancient",
-        description: response.substring(0, 300).replace(/[{}[\]"]/g, ''),
-        historical_context: "Analysis complete",
-        fun_facts: [],
-        visitor_tips: "Visit during daylight hours",
-        nearby_sites: [],
-        best_time_to_visit: "Spring or Autumn"
-      });
+      return NextResponse.json(
+        { error: "Failed to parse AI response" },
+        { status: 500 }
+      );
     }
 
   } catch (error: any) {
@@ -159,13 +177,6 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Fonction helper pour extraire des infos du texte brut
-function extractInfo(text: string, field: string): string | null {
-  const regex = new RegExp(`"${field}"\\s*:\\s*"([^"]+)"`, 'i');
-  const match = text.match(regex);
-  return match ? match[1] : null;
 }
 
 export async function GET() {
