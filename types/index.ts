@@ -3,6 +3,23 @@
 // ─── Destinations ──────────────────────────────────────────────────────────
 export type DestinationType = "historical" | "natural" | "coastal" | "urban" | "desert" | "culinary";
 
+// ✅ SOLUTION 1: Garder seulement l'interface (supprimer la ligne 5)
+export interface Profile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at?: string;
+  preferences?: {
+    theme?: 'dark' | 'light';
+    notifications?: boolean;
+    language?: 'en' | 'fr' | 'ar';
+  };
+  sustainability_score?: number;
+  saved_itineraries?: string[];
+}
+
 export interface Destination {
   id: string;
   name: string;
@@ -18,7 +35,7 @@ export interface Destination {
   lng: number;
   best_season: string[];
   avg_visit_hours: number;
-  sustainability_score: number; // 0-100
+  sustainability_score: number;
   crowd_level: "low" | "moderate" | "high";
   heritage_site: boolean;
   unesco: boolean;
@@ -41,7 +58,7 @@ export interface ItineraryStop {
   activity: string;
   notes?: string;
   order: number;
-  videos?: VideoResult[]; // Added for video integration
+  videos?: VideoResult[];
 }
 
 export interface ItineraryDay {
@@ -70,7 +87,7 @@ export interface Itinerary {
   sustainability_tips: string[];
   estimated_cost: string;
   created_at: string;
-  special_requests?: string; // Added for form data
+  special_requests?: string;
 }
 
 // ─── Heritage ──────────────────────────────────────────────────────────────
@@ -125,6 +142,7 @@ export interface UserProfile {
   travel_style: TravelStyle | null;
   saved_destinations: string[];
   created_at: string;
+  university?: string | null;
 }
 
 // ─── Heritage Recognition ─────────────────────────────────────────────────

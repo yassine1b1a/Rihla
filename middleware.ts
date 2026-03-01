@@ -1,6 +1,13 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Type personnalisé pour les cookies
+type CookieToSet = {
+  name: string
+  value: string
+  options?: CookieOptions
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -34,6 +41,15 @@ export async function middleware(request: NextRequest) {
           })
           response.cookies.set({ name, value: '', ...options })
         },
+        // ✅ Avec le type personnalisé
+        getAll: (): { name: string; value: string }[] => {
+          return request.cookies.getAll()
+        },
+        setAll: (cookiesToSet: CookieToSet[]): void => {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+        },
       },
     }
   )
@@ -49,12 +65,10 @@ export async function middleware(request: NextRequest) {
   // Auth routes
   const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
 
-  // If accessing protected route without session, redirect to auth
   if (isProtectedRoute && !session) {
     return NextResponse.redirect(new URL('/auth', request.url))
   }
 
-  // If accessing auth route with session, redirect to dashboard
   if (isAuthRoute && session) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }

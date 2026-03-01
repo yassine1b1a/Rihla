@@ -68,6 +68,7 @@ Respond in 2-4 paragraphs. Use markdown formatting where helpful. Never be gener
 }
 
 // ─── 2. Personalised Itinerary Generator ──────────────────────────────────
+// ─── 2. Personalised Itinerary Generator ──────────────────────────────────
 export async function generateItinerary(params: {
   country: string;
   days: number;
@@ -153,7 +154,18 @@ For Tunisia: include medinas, archaeological sites, desert experiences, coastal 
       return parsed;
     } catch (parseError) {
       console.error("❌ Failed to parse JSON. Raw content:", content);
-      throw new Error(`AI response was not valid JSON: ${parseError.message}`);
+      
+      // ✅ CORRECTION: Gestion sécurisée de l'erreur unknown
+      let errorMessage = "Unknown parsing error";
+      if (parseError instanceof Error) {
+        errorMessage = parseError.message;
+      } else if (typeof parseError === "string") {
+        errorMessage = parseError;
+      } else if (parseError && typeof parseError === "object" && "message" in parseError) {
+        errorMessage = String((parseError as any).message);
+      }
+      
+      throw new Error(`AI response was not valid JSON: ${errorMessage}`);
     }
     
   } catch (error: any) {
@@ -165,7 +177,6 @@ For Tunisia: include medinas, archaeological sites, desert experiences, coastal 
     throw error;
   }
 }
-
 // ─── 3. Cultural Heritage Recognition ──────────────────────────
 export async function recognizeHeritage(input: {
   type: "description" | "image_url";

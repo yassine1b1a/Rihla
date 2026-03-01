@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
@@ -22,13 +23,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>" />
       </head>
       <body>
-        {children}
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            style: { background: "#1C2330", border: "1px solid #252F3F", color: "#F0EBE3" },
-          }}
-        />
+        {/* ✅ Le LanguageProvider doit envelopper tout le contenu */}
+        <LanguageProvider>
+          {children}
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              style: { background: "#1C2330", border: "1px solid #252F3F", color: "#F0EBE3" },
+            }}
+          />
+        </LanguageProvider>
       </body>
     </html>
   );

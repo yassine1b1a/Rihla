@@ -5,7 +5,8 @@
 > Submitted to **AINC'26 — Algeria AI Innovation Challenge** · Theme: Innovative Tourism
 
 ---
-
+Production Ready : https://rihla.thprojects.ovh/
+Demo Video Link : https://drive.google.com/file/d/1EiIFTieWOUfYV1uNWimLIH2Z2h9s52Lz/view
 ## 🌟 What is Rihla?
 
 Rihla tackles four interconnected tourism challenges with dedicated AI solutions:
