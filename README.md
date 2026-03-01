@@ -1,21 +1,33 @@
 # 🧭 Rihla — AI Tourism Ecosystem
 
-**رحلة** (Rihla) — An AI-powered tourism platform designed to transform how travellers discover, plan, and experience Tunisia and the broader Maghreb region.
+**رحلة** (Rihla) — An AI-powered tourism platform designed to transform how travellers discover, plan, and experience destinations across the globe.
 
-> Submitted to **AINC'26 — Algeria AI Innovation Challenge** · Theme: Innovative Tourism
+> Submitted to **AINC'26** · Theme: Innovative Tourism
 
 ---
-Production Ready : https://rihla.thprojects.ovh/
-Demo Video Link : https://drive.google.com/file/d/1EiIFTieWOUfYV1uNWimLIH2Z2h9s52Lz/view
+
+## 🌐 Live Demo
+
+**Production Ready:** [https://rihla.thprojects.ovh/](https://rihla.thprojects.ovh/)
+
+**Demo Video:** [https://drive.google.com/file/d/1EiIFTieWOUfYV1uNWimLIH2Z2h9s52Lz/view](https://drive.google.com/file/d/1EiIFTieWOUfYV1uNWimLIH2Z2h9s52Lz/view)
+
+**GitHub Repository:** [https://github.com/yassine1b1a/Rihla](https://github.com/yassine1b1a/Rihla)
+
+---
+
 ## 🌟 What is Rihla?
 
-Rihla tackles four interconnected tourism challenges with dedicated AI solutions:
+Rihla (رحلة) means "journey" in Arabic. It is an AI-powered tourism ecosystem that tackles four interconnected tourism challenges with dedicated AI systems.
 
-| Challenge | Rihla's AI Solution |
-|-----------|-------------------|
-| Generic, cookie-cutter travel planning | **Personalised AI Itinerary Generator** |
-| Language & knowledge barriers at heritage sites | **AI Travel Concierge Chat** |
-| Lost cultural context at ruins & monuments | **Heritage Recognition AI** |
+⚠️ **Important Note:**
+All destinations are dynamically AI-generated and technically support all countries worldwide. For the AINC'26 challenge scope, the platform is intentionally limited to six countries: Tunisia, Morocco, Algeria, Egypt, Jordan, and Libya.
+
+| Challenge                                    | Rihla's AI Solution                               |
+| -------------------------------------------- | ------------------------------------------------- |
+| Generic, cookie-cutter travel planning       | **Personalised AI Itinerary Generator**           |
+| Lack of accessible travel knowledge          | **AI Travel Concierge Chat**                      |
+| Lost cultural context at ruins & monuments   | **Heritage Recognition AI** (image & text)        |
 | Overtourism & unsustainable visitor patterns | **Sustainability & Crowd Intelligence Dashboard** |
 
 ---
@@ -23,185 +35,172 @@ Rihla tackles four interconnected tourism challenges with dedicated AI solutions
 ## ✨ Core Features
 
 ### 1. 🗺️ AI Itinerary Planner (`/itinerary`)
-- 5-step wizard: country → style → interests → generate
-- Supports Tunisia, Morocco, Algeria, Egypt, Jordan
-- AI crafts day-by-day itineraries with stops, durations, local tips, accommodation, and sustainability advice
-- Budget levels: backpacker → mid-range → luxury
-- Travel styles: cultural, adventure, relaxation, family, luxury, budget
+
+* 5-step wizard: country → style → interests → budget → generate
+* Currently limited to 6 countries (challenge scope)
+* AI crafts day-by-day itineraries with stops, durations, local tips, accommodation suggestions, and sustainability advice
+* Budget levels: budget, mid-range, luxury
+* Travel styles: cultural, adventure, relaxation, family, luxury, budget
+* Real-time itinerary generation with structured fallback handling
+* Destinations are AI-generated dynamically
 
 ### 2. 🤖 AI Travel Concierge (`/explore`)
-- Real-time chat powered by LLaMA 3.3 70B via OpenRouter
-- Expert on: Tunisian medinas, Sahara, coastal towns, food, culture, etiquette, safety
-- Country context switching (Tunisia, Morocco, Algeria, Egypt, Jordan)
-- Sidebar with quick questions and destination shortcuts
-- Supports English, French, Arabic prompts
+
+* Real-time conversational assistant
+* Expert-level knowledge about selected destinations
+* Country context switching within the 6 supported countries
+* Sidebar with quick prompts and destination shortcuts
+* Conversation history with markdown rendering
 
 ### 3. 🏛️ Heritage Recognition AI (`/heritage`)
-- Two modes: **Describe it** (text) or **Image URL**
-- Identifies ruins, mosques, medinas, archaeological sites, monuments
-- Returns: site name, civilization, period, historical context, fun facts, visitor tips, nearby sites
-- Curated heritage library: El Jem amphitheatre, Carthage, Kairouan Great Mosque, Bardo Museum
+
+* Two modes: **Describe it** (text) or **Upload Image**
+* Vision model integration for monument recognition
+* Identifies ruins, mosques, medinas, archaeological sites, and monuments
+* Returns structured cultural data: civilization, period, historical context, key facts, visitor advice, nearby landmarks
+* Confidence scoring and UNESCO-style detection logic
 
 ### 4. 🌿 Sustainability Dashboard (`/sustainability`)
-- Per-destination, per-month eco analysis
-- Metrics: eco score, crowd forecast, carbon estimate, water stress
-- 12-month visitor and eco-score trend charts (Recharts)
-- Responsible travel tips, local eco initiatives, alternative destinations
-- Carrying capacity alerts for overcrowded periods
+
+* Per-destination, per-month environmental analysis
+* Metrics:
+
+  * Eco score (0–100)
+  * Crowd forecast (low / moderate / high)
+  * Carbon footprint estimate (kg per visitor)
+  * Water stress indicator
+* 12-month trend visualisation
+* Responsible travel recommendations
+* Alternative destination suggestions during overcrowded periods
+* AI-generated sustainability insights
 
 ---
 
 ## 🛠 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 14 (App Router) |
-| Animations | Framer Motion |
-| Styling | Tailwind CSS + custom design system |
-| Database | Supabase (PostgreSQL + Auth) |
-| AI/LLM | OpenRouter — LLaMA 3.3 70B |
-| Charts | Recharts |
-| Typography | Cormorant Garamond + Outfit + Lato + Noto Naskh Arabic |
-| Icons | Lucide React |
-| Notifications | Sonner |
+| Layer                    | Technology                             |
+| ------------------------ | -------------------------------------- |
+| **Framework**            | Next.js 14 (App Router)                |
+| **Language**             | TypeScript                             |
+| **Styling**              | Tailwind CSS                           |
+| **Database & Auth**      | Supabase (PostgreSQL + Authentication) |
+| **AI/LLM Gateway**       | OpenRouter                             |
+| **Vision Model**         | NVIDIA Nemotron Nano 12B 2 VL          |
+| **Large Language Model** | LLaMA 3.3 70B                          |
+| **Charts**               | Recharts                               |
+| **Animations**           | Framer Motion                          |
+| **Deployment**           | Vercel                                 |
 
 ---
 
-## 🎨 Design System
+## 🚀 Quick Start
 
-**Aesthetic:** Mediterranean Luxury — terracotta warmth, sand gold, deep teal, and Arabic geometric (zellige) patterns.
-
-| Token | Value | Use |
-|-------|-------|-----|
-| `terra` | `#C84B31` | Primary CTAs, accents |
-| `sand` | `#E8C98A` | Gold highlights, Arabic text |
-| `teal` | `#1A7A6E` | Heritage, eco, secondary |
-| `night` | `#0F1419` | Background |
-| `stone` | `#4A4033` | Muted text |
-
-**Fonts:**
-- **Cormorant Garamond** — display headings (editorial, serif luxury)
-- **Outfit** — UI headings and navigation
-- **Lato** — body text
-- **Noto Naskh Arabic** — Arabic script elements
-- **JetBrains Mono** — labels and code
-
----
-
-## 🚀 Setup
-
-### 1. Install
+### 1. Clone and Install
 
 ```bash
-git clone <repo>
-cd rihla
+git clone https://github.com/yassine1b1a/Rihla.git
+cd Rihla
 npm install
 ```
 
-### 2. Supabase Setup
-
-1. Create project at [supabase.com](https://supabase.com)
-2. Run `supabase/schema.sql` in the SQL Editor
-3. Enable Google & GitHub OAuth in Authentication > Providers
-
-### 3. OpenRouter Setup
-
-1. Get API key at [openrouter.ai](https://openrouter.ai)
-2. The app uses `meta-llama/llama-3.3-70b-instruct` (chat, itinerary, heritage)
-3. And `meta-llama/llama-3.1-8b-instruct:free` for sustainability analysis
-
-### 4. Environment Variables
+### 2. Environment Variables
 
 ```bash
 cp .env.local.example .env.local
 ```
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-OPENROUTER_API_KEY=sk-or-...
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# OpenRouter API
+OPENROUTER_API_KEY=your-openrouter-key
+
+# App URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_REDIRECT_URL=http://localhost:3000/auth/callback
 ```
 
-### 5. Run
+### 3. Database Setup
+
+1. Create a Supabase project
+2. Run the schema from `supabase/schema.sql`
+3. Enable OAuth providers if needed
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
-# → http://localhost:3000
 ```
 
----
+### 5. Production Build
 
-## 📂 Project Structure
-
-```
-rihla/
-├── app/
-│   ├── page.tsx                    # Landing page
-│   ├── layout.tsx / globals.css    # Root layout + design system
-│   ├── auth/page.tsx               # Login / signup
-│   ├── dashboard/page.tsx          # User dashboard
-│   ├── itinerary/page.tsx          # 🗺️ AI Itinerary Generator
-│   ├── explore/page.tsx            # 🤖 AI Travel Chat
-│   ├── heritage/page.tsx           # 🏛️ Heritage Recognition
-│   ├── sustainability/page.tsx     # 🌿 Eco Dashboard
-│   └── api/ai/
-│       ├── chat/route.ts           # Chat API
-│       ├── itinerary/route.ts      # Itinerary API
-│       ├── heritage/route.ts       # Heritage API
-│       └── sustainability/route.ts # Eco insights API
-├── components/layout/Navbar.tsx
-├── lib/
-│   ├── openrouter.ts              # All 4 AI functions
-│   ├── supabase/                  # Client, server, middleware
-│   └── data/destinations.ts      # Tunisia + regional seed data
-├── types/index.ts
-├── supabase/schema.sql
-└── .env.local.example
+```bash
+npm run build
+npm start
 ```
 
 ---
 
 ## 🗺️ Pages Overview
 
-| Route | Feature |
-|-------|---------|
-| `/` | Landing — hero, features, destinations, CTA |
-| `/itinerary` | AI Itinerary Generator wizard |
-| `/explore` | AI chat travel guide |
-| `/heritage` | Heritage recognition (text/image) |
-| `/sustainability` | Eco & crowd dashboard |
-| `/auth` | Login / signup (email + OAuth) |
-| `/dashboard` | User home with quick access |
+| Route             | Feature                | Description                                           |
+| ----------------- | ---------------------- | ----------------------------------------------------- |
+| `/`               | Landing                | Hero section, features grid, destination preview, CTA |
+| `/itinerary`      | AI Itinerary Generator | 5-step AI wizard                                      |
+| `/explore`        | AI Travel Guide        | Conversational travel assistant                       |
+| `/heritage`       | Heritage Recognition   | Image & text monument analysis                        |
+| `/sustainability` | Eco Dashboard          | Monthly eco & crowd analytics                         |
+| `/auth`           | Authentication         | Email & OAuth login                                   |
+| `/dashboard`      | User Dashboard         | Central access to tools                               |
 
 ---
 
-## 🌍 Destinations Covered
+## 🌍 Destinations Scope
 
-**Tunisia:** Sidi Bou Said, Carthage, Kairouan, Djerba, Tataouine & Ksour, Tozeur & Chott el-Jerid, Tunis Medina, Douz Sahara
+Rihla's AI engine can technically generate travel plans for **any country worldwide**.
 
-**Morocco:** Chefchaouen
+For AINC'26, the platform is intentionally focused on:
 
-**Algeria:** Casbah of Algiers
+* 🇹🇳 Tunisia
+* 🇲🇦 Morocco
+* 🇩🇿 Algeria
+* 🇪🇬 Egypt
+* 🇯🇴 Jordan
+* 🇱🇾 Libya
 
-**Heritage Sites:** El Jem Amphitheatre, Dougga, Great Mosque of Kairouan, Bardo National Museum
+This controlled scope ensures depth, cultural accuracy, and strong regional specialization while keeping the architecture globally scalable.
 
 ---
 
 ## 🏆 AINC'26 Innovation Angle
 
-Rihla directly addresses the AINC'26 tourism innovation mandate:
-- **Personalisation** — AI itineraries matched to each traveller's unique profile
-- **Cultural Heritage** — AI unlocks history of every monument, in any language
-- **Destination Management** — Crowd intelligence guides sustainable visitation
-- **Data-driven Tourism** — Eco scores and monthly trend analytics inform decisions
-- **Maghreb Focus** — Deep, specific knowledge of Tunisia and North African destinations
+| Innovation                | Implementation                                    |
+| ------------------------- | ------------------------------------------------- |
+| **Personalisation**       | AI-generated itineraries tailored to user profile |
+| **Cultural Intelligence** | Monument recognition via vision AI                |
+| **Sustainable Tourism**   | Eco scoring & crowd forecasting system            |
+| **Data-Driven Insights**  | Monthly environmental trend analytics             |
+| **Scalable Architecture** | Globally adaptable AI destination engine          |
+
+---
+
+## 👥 Team
+
+**Taha Yassine Ben Ali**
+
+* ICT Engineering Student (Networks & Embedded Systems)
+* Full-stack Developer & AI Enthusiast
+* ENIG, Tunisia
 
 ---
 
 ## 📄 License
 
-MIT © Rihla Team — Built for AINC'26 AI Innovation Challenge 2026
-# Rihla
-# Rihla
+© Rihla Team — Developed for AI Innovation Challenge AINC'26 2026
+
+---
+
+*Rihla — Your journey begins here.* 🧭
