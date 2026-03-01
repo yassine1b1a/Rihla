@@ -5,12 +5,30 @@ import OpenAI from "openai";
 const openrouter = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
-  timeout: 30000, // 30 secondes timeout
+  timeout: 30000,
   maxRetries: 2,
 });
 
+// ✅ Ajoutez cette fonction pour gérer OPTIONS (pré-flight CORS)
+export async function OPTIONS() {
+  return NextResponse.json({}, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
-  console.log("👁️ Heritage Vision API: Received request");
+  console.log("👁️ Heritage Vision API: Received POST request");
+  
+  // ✅ Ajoutez les headers CORS à toutes les réponses
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
   
   try {
     const formData = await req.formData();
@@ -21,7 +39,7 @@ export async function POST(req: NextRequest) {
     if (!imageFile) {
       return NextResponse.json(
         { error: "Image is required" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -34,7 +52,6 @@ export async function POST(req: NextRequest) {
     console.log("👁️ Using NVIDIA Nemotron Nano 12B V2 VL (free)");
     console.log("Image size:", Math.round(base64Image.length / 1024), "KB");
 
-    // Le bon ID du modèle NVIDIA
     const completion = await openrouter.chat.completions.create({
       model: "nvidia/nemotron-nano-12b-v2-vl:free",
       messages: [
@@ -80,7 +97,6 @@ export async function POST(req: NextRequest) {
       temperature: 0.7,
     });
 
-    // Vérifier que nous avons une réponse
     if (!completion.choices || completion.choices.length === 0) {
       throw new Error("No response from vision model");
     }
@@ -95,21 +111,15 @@ export async function POST(req: NextRequest) {
 
     // Nettoyer et parser le JSON
     try {
-      // Enlever les marqueurs de code markdown
       let jsonContent = response.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      
-      // Trouver le premier objet JSON valide
       const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error("No JSON object found in response");
       }
       
       jsonContent = jsonMatch[0];
-      
-      // Parser le JSON
       const parsed = JSON.parse(jsonContent);
       
-      // S'assurer que les champs requis existent
       return NextResponse.json({
         site_name: parsed.site_name || "Heritage Site",
         confidence: parsed.confidence || 70,
@@ -123,12 +133,11 @@ export async function POST(req: NextRequest) {
         visitor_tips: parsed.visitor_tips || "Visit during daylight hours",
         nearby_sites: Array.isArray(parsed.nearby_sites) ? parsed.nearby_sites : [],
         best_time_to_visit: parsed.best_time_to_visit || "Spring or Autumn"
-      });
+      }, { headers: corsHeaders });
       
     } catch (parseError) {
       console.log("Could not parse JSON, returning formatted text");
       
-      // Retourner la réponse brute dans un format structuré
       return NextResponse.json({ 
         site_name: "Heritage Site",
         description: response.substring(0, 500),
@@ -139,7 +148,7 @@ export async function POST(req: NextRequest) {
         fun_facts: ["Site identifié avec succès"],
         visitor_tips: "Consultez un guide local pour plus d'informations",
         nearby_sites: []
-      });
+      }, { headers: corsHeaders });
     }
 
   } catch (error: any) {
@@ -148,41 +157,37 @@ export async function POST(req: NextRequest) {
       status: error.status,
     });
     
-    // Message d'erreur spécifique
     if (error.status === 401) {
       return NextResponse.json(
-        { 
-          error: "Invalid OpenRouter API key",
-          solution: "Please check your OPENROUTER_API_KEY in .env.local"
-        },
-        { status: 401 }
+        { error: "Invalid OpenRouter API key" },
+        { status: 401, headers: corsHeaders }
       );
     }
     
     if (error.status === 404) {
       return NextResponse.json(
-        { 
-          error: "Model not found",
-          solution: "The model ID might be incorrect"
-        },
-        { status: 404 }
+        { error: "Model not found" },
+        { status: 404, headers: corsHeaders }
       );
     }
     
     return NextResponse.json(
-      { 
-        error: "Failed to analyze image",
-        details: error.message
-      },
-      { status: 500 }
+      { error: "Failed to analyze image" },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
 
 export async function GET() {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+  
   return NextResponse.json({ 
     message: "Heritage Vision API with NVIDIA Nemotron",
     model: "nvidia/nemotron-nano-12b-v2-vl:free",
     status: "running"
-  });
+  }, { headers: corsHeaders });
 }
