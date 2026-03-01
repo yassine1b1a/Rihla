@@ -1,4 +1,5 @@
 "use client";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef } from "react";
 import {
@@ -254,8 +255,8 @@ export default function HeritagePage() {
   // ── identify ───────────────────────────────────────────────────────────────
 
   const identify = async () => {
-    if (mode === "describe" && !input.trim()) { setError("Describe what you see: architecture style, materials, location details..."); return; }
-    if (mode === "upload"   && !imageFile)    { setError("Upload Image"); return; }
+    if (mode === "describe" && !input.trim()) { setError("Please describe the site you see"); return; }
+    if (mode === "upload"   && !imageFile)    { setError("Please upload an image"); return; }
 
     setLoading(true);
     setError("");
@@ -313,7 +314,7 @@ export default function HeritagePage() {
     (mode === "describe" ? !!input.trim() : !!selectedImage);
 
   return (
-    <div className="min-h-screen bg-[#0F1419]" >
+    <div className="min-h-screen bg-[#0F1419]">
       <Navbar />
       <div className="fixed inset-0 zellige-bg pointer-events-none" />
       <div
@@ -330,12 +331,12 @@ export default function HeritagePage() {
           >
             <Camera className="w-7 h-7 text-white" />
           </div>
-          <p className="text-xs font-mono text-teal-light uppercase tracking-widest mb-3">{"Heritage Recognition"}</p>
+          <p className="text-xs font-mono text-teal-light uppercase tracking-widest mb-3">AI Heritage Recognition</p>
           <h1 className="font-display text-5xl md:text-6xl text-foreground mb-4">
-            {"Discover the history behind every site"} <span className="text-teal-gradient">{"Historical Context"}</span>
+            Every Stone <span className="text-teal-gradient">Has a Story</span>
           </h1>
           <p className="text-stone-mist text-lg max-w-xl mx-auto">
-            {"Drag & drop or click to upload an image"}
+            Upload a photo or describe what you see to instantly unlock the history, legends and secrets of any heritage site.
           </p>
         </motion.div>
 
@@ -358,7 +359,7 @@ export default function HeritagePage() {
                       color: mode === m ? "white" : "#7A6E62",
                     }}
                   >
-                    {m === "describe" ? "Describe a Site" : "Upload Image"}
+                    {m === "describe" ? "Describe it" : "Upload Photo"}
                   </button>
                 ))}
               </div>
@@ -366,12 +367,12 @@ export default function HeritagePage() {
               {mode === "describe" ? (
                 <div className="mb-4">
                   <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">
-                    {"Describe a Site"}
+                    Describe the site
                   </label>
                   <textarea
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    placeholder={"Describe what you see: architecture style, materials, location details..."}
+                    placeholder="e.g. I see a massive ancient Roman arena with three levels of arches, very well preserved, in North Africa..."
                     rows={5}
                     className="w-full input-rihla px-4 py-3 rounded-xl text-sm resize-none"
                     disabled={loading}
@@ -380,7 +381,7 @@ export default function HeritagePage() {
               ) : (
                 <div className="mb-4">
                   <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">
-                    {"Upload Image"}
+                    Upload a photo
                   </label>
 
                   {!selectedImage ? (
@@ -397,8 +398,8 @@ export default function HeritagePage() {
                         className="hidden"
                       />
                       <Upload className="w-8 h-8 text-teal-light mx-auto mb-2" />
-                      <p className="text-sm text-stone-mist">{"Drag & drop or click to upload an image"}</p>
-                      <p className="text-xs text-stone-mist mt-1 opacity-50">{"Supports JPG, PNG, WebP up to 10MB"}</p>
+                      <p className="text-sm text-stone-mist">Click to upload or drag and drop</p>
+                      <p className="text-xs text-stone-mist mt-1 opacity-50">PNG, JPG, WEBP up to 10MB</p>
                     </div>
                   ) : (
                     <div className="relative">
@@ -415,7 +416,7 @@ export default function HeritagePage() {
                   {selectedImage && (
                     <div className="mt-3">
                       <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">
-                        {"Visiting Information"}
+                        Optional: Ask something specific
                       </label>
                       <input
                         type="text"
@@ -433,7 +434,7 @@ export default function HeritagePage() {
               {/* Country hint */}
               <div className="mb-4">
                 <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">
-                  {"Location"}
+                  Country hint
                 </label>
                 <select
                   value={country}
@@ -468,12 +469,12 @@ export default function HeritagePage() {
                 {loading ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    {"Identifying..."}
+                    Analysing...
                   </>
                 ) : (
                   <>
                     <Search className="w-4 h-4" />
-                    {"Identify Site"}
+                    Identify Site
                   </>
                 )}
               </motion.button>
@@ -481,7 +482,7 @@ export default function HeritagePage() {
 
             {/* Quick samples */}
             <div>
-              <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">{"Try an example"}</div>
+              <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">Try a sample</div>
               <div className="space-y-2">
                 {SAMPLE_SITES.map(s => (
                   <button
@@ -509,7 +510,7 @@ export default function HeritagePage() {
               <ResultCard result={result} />
             ) : (
               <div>
-                <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-4">{"Heritage Library"}</div>
+                <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-4">Heritage Library</div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {HERITAGE_SITES.map(s => <SiteCard key={s.id} site={s} />)}
                 </div>
