@@ -450,7 +450,7 @@ export default function ItineraryPage() {
         country: form.country,
         duration_days: form.days,
         travel_style: form.style as any,
-        budget: form.budget as any,
+        budget: form.budget,
         interests: form.interests,
         special_requests: form.special,
         title: data.title || `${form.days}-Day Journey Through ${form.country}`,
