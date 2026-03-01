@@ -2,7 +2,7 @@
 
 **رحلة** (Rihla) — An AI-powered tourism platform designed to transform how travellers discover, plan, and experience Tunisia and the broader Maghreb region.
 
-> Submitted to **AINC'26 — Algeria AI Innovation Challenge** · Theme: Innovative Tourism
+> Submitted to **AINC'26** · Theme: Innovative Tourism
 
 ---
 Production Ready : https://rihla.thprojects.ovh/
