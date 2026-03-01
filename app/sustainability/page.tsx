@@ -1,11 +1,11 @@
 "use client";
+
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Leaf, BarChart3, Users, Droplets, Wind, TreePine, AlertTriangle, CheckCircle, RefreshCw, TrendingDown, Globe } from "lucide-react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { DESTINATIONS } from "@/lib/data/destinations";
 import { Navbar } from "@/components/layout/Navbar";
-import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -49,7 +49,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function SustainabilityPage() {
-  const { t, dir } = useLanguage();
   const [dest, setDest]       = useState(DESTINATIONS[0]);
   const [month, setMonth]     = useState("Jun");
   const [loading, setLoading] = useState(false);
@@ -75,7 +74,7 @@ export default function SustainabilityPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F1419]" dir={dir}>
+    <div className="min-h-screen bg-[#0F1419]">
       <Navbar />
       <div className="fixed inset-0 pointer-events-none"
         style={{ background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(26,122,110,0.08), transparent)" }} />
@@ -83,12 +82,13 @@ export default function SustainabilityPage() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 pt-24 pb-16">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
-          <p className="text-xs font-mono text-teal-light uppercase tracking-widest mb-2">{t('sustainability.title')}</p>
+          <p className="text-xs font-mono text-teal-light uppercase tracking-widest mb-2">Sustainable Tourism Intelligence</p>
           <h1 className="font-display text-5xl md:text-6xl text-foreground mb-3">
-            {t('sustainability.subtitle')} <span className="text-teal-gradient">{t('sustainability.ecoScore')}</span>
+            Destination <span className="text-teal-gradient">Health</span>
           </h1>
           <p className="text-stone-mist text-lg max-w-2xl">
-            {t('sustainability.recommendations')}
+            Real-time crowd forecasts, ecological scores, and responsible travel guidance —
+            protecting the places we love for generations to come.
           </p>
         </motion.div>
 
@@ -97,14 +97,14 @@ export default function SustainabilityPage() {
           className="p-5 rounded-2xl mb-8 flex flex-wrap gap-4 items-end"
           style={{ background: "rgba(28,35,48,0.8)", border: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex-1 min-w-48">
-            <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">{t('sustainability.selectDest')}</label>
+            <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">Destination</label>
             <select value={dest.id} onChange={e => setDest(DESTINATIONS.find(d => d.id === e.target.value) || DESTINATIONS[0])}
               className="w-full input-rihla px-4 py-2.5 rounded-xl text-sm">
               {DESTINATIONS.map(d => <option key={d.id} value={d.id}>{d.name} — {d.country}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">{t('sustainability.selectMonth')}</label>
+            <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">Month</label>
             <div className="flex flex-wrap gap-1">
               {MONTHS.map(m => (
                 <button key={m} onClick={() => setMonth(m)}
@@ -120,8 +120,8 @@ export default function SustainabilityPage() {
           <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={getInsights} disabled={loading}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-heading font-semibold disabled:opacity-50"
             style={{ background: "linear-gradient(135deg, #1A7A6E, #2BA899)", color: "white", whiteSpace: "nowrap" }}>
-            {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> {t('sustainability.loading')}</>
-                     : <><BarChart3 className="w-4 h-4" /> {t('sustainability.getInsights')}</>}
+            {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Analysing…</>
+                     : <><BarChart3 className="w-4 h-4" /> Get AI Insights</>}
           </motion.button>
         </motion.div>
 

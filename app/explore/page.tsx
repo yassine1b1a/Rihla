@@ -6,43 +6,31 @@ import { Brain, Send, Compass, RotateCcw, MapPin, Sparkles, ChevronRight } from 
 import { DESTINATIONS, COUNTRIES } from "@/lib/data/destinations";
 import { Navbar } from "@/components/layout/Navbar";
 import { marked } from "marked";
-import { useLanguage } from "@/lib/i18n/LanguageContext";
+
+const STARTERS = [
+  "What are the absolute must-see places in Tunisia?",
+  "Plan a 3-day trip to the Sahara from Tunis",
+  "Tell me about the medina of Kairouan",
+  "What's the best time to visit Djerba?",
+  "What Tunisian food should I definitely try?",
+  "Is Tunisia safe for solo female travellers?",
+];
+
+const DEST_QUICK = DESTINATIONS.slice(0, 6);
 
 type Msg = { id: string; role: "user" | "assistant"; content: string };
 
 export default function ExplorePage() {
-  const { t, language, dir } = useLanguage();
-
-  const STARTERS = [
-    t('explore.starter1') !== 'explore.starter1' ? t('explore.starter1') : "What are the absolute must-see places in Tunisia?",
-    t('explore.starter2') !== 'explore.starter2' ? t('explore.starter2') : "Plan a 3-day trip to the Sahara from Tunis",
-    t('explore.starter3') !== 'explore.starter3' ? t('explore.starter3') : "Tell me about the medina of Kairouan",
-    t('explore.starter4') !== 'explore.starter4' ? t('explore.starter4') : "What's the best time to visit Djerba?",
-    t('explore.starter5') !== 'explore.starter5' ? t('explore.starter5') : "What Tunisian food should I definitely try?",
-    t('explore.starter6') !== 'explore.starter6' ? t('explore.starter6') : "Is Tunisia safe for solo female travellers?",
-  ];
-
-  const getWelcomeMsg = () => {
-    if (language === 'ar') {
-      return `# مرحباً — Marhaba! أهلاً بك في رحلة 🧭\n\nأنا خبيرك الشخصي في السفر إلى **تونس والمغرب العربي**.\n\nاسألني عن أي شيء:\n- 🏛️ *المواقع الأثرية والثقافية*\n- 🍽️ *الطعام المحلي وأماكن الأكل*\n- 🗺️ *أفكار الرحلات وتخطيط المسارات*\n- 🤝 *الآداب الثقافية والنصائح العملية*\n- 🌿 *السياحة المستدامة والمسؤولة*\n\n**من أين تبدأ رحلتك؟**`;
-    } else if (language === 'fr') {
-      return `# مرحباً — Marhaba! Bienvenue sur Rihla AI 🧭\n\nJe suis votre expert personnel en voyages pour la **Tunisie et le Maghreb**.\n\nPosez-moi n'importe quelle question :\n- 🏛️ *Sites antiques et culturels*\n- 🍽️ *Cuisine locale, restaurants, spécialités*\n- 🗺️ *Idées d'itinéraires et planification*\n- 🤝 *Étiquette culturelle et conseils pratiques*\n- 🌿 *Voyage durable et responsable*\n\n**Par où commencer votre voyage ?**`;
-    }
-    return `# مرحباً — Marhaba! Welcome to Rihla AI 🧭\n\nI'm your personal travel expert for **Tunisia and the Maghreb**. I know every medina, desert track, UNESCO site, hidden beach and local restaurant worth knowing.\n\nAsk me anything:\n- 🏛️ *Ancient ruins and cultural sites*\n- 🍽️ *Local food, where to eat, what to try*\n- 🗺️ *Itinerary ideas and route planning*\n- 🤝 *Cultural etiquette and practical tips*\n- 🌿 *Sustainable and responsible travel*\n\n**Where does your journey begin?**`;
-  };
-
-  const [msgs, setMsgs] = useState<Msg[]>([{ id: "0", role: "assistant", content: getWelcomeMsg() }]);
-  const [input, setInput] = useState("");
+  const [msgs, setMsgs]       = useState<Msg[]>([{
+    id: "0", role: "assistant",
+    content: `# مرحباً — Marhaba! Welcome to Rihla AI 🧭\n\nI'm your personal travel expert for **Tunisia and the Maghreb**. I know every medina, desert track, UNESCO site, hidden beach and local restaurant worth knowing.\n\nAsk me anything:\n- 🏛️ *Ancient ruins and cultural sites*\n- 🍽️ *Local food, where to eat, what to try*\n- 🗺️ *Itinerary ideas and route planning*\n- 🤝 *Cultural etiquette and practical tips*\n- 🌿 *Sustainable and responsible travel*\n\n**Where does your journey begin?**`,
+  }]);
+  const [input, setInput]     = useState("");
   const [loading, setLoading] = useState(false);
   const [country, setCountry] = useState("Tunisia");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
-
-  // Update welcome message when language changes
-  useEffect(() => {
-    setMsgs([{ id: "0", role: "assistant", content: getWelcomeMsg() }]);
-  }, [language]);
 
   const send = async (text: string) => {
     if (!text.trim() || loading) return;
@@ -56,31 +44,29 @@ export default function ExplorePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...msgs, userMsg].map(m => ({ role: m.role, content: m.content })),
-          context: { country, language },
+          context: { country },
         }),
       });
       const data = await res.json();
-      setMsgs(p => [...p, { id: Date.now().toString(), role: "assistant", content: data.message || t('explore.responseError') }]);
+      setMsgs(p => [...p, { id: Date.now().toString(), role: "assistant", content: data.message || "I couldn't respond. Please try again." }]);
     } catch {
-      setMsgs(p => [...p, { id: Date.now().toString(), role: "assistant", content: t('explore.connectionError') }]);
+      setMsgs(p => [...p, { id: Date.now().toString(), role: "assistant", content: "Connection error. Please try again." }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const DEST_QUICK = DESTINATIONS.slice(0, 6);
-
   return (
-    <div className="flex h-screen bg-[#0F1419] overflow-hidden flex-col" dir={dir}>
+    <div className="flex h-screen bg-[#0F1419] overflow-hidden flex-col">
       <Navbar />
 
       <div className="flex flex-1 overflow-hidden pt-16">
-        {/* Sidebar */}
+        {/* ── Sidebar ── */}
         <aside className="hidden lg:flex flex-col w-72 border-r flex-shrink-0 overflow-y-auto"
           style={{ background: "rgba(15,20,25,0.95)", borderColor: "rgba(255,255,255,0.06)" }}>
           {/* Country filter */}
           <div className="p-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2">{t('explore.focusRegion')}</div>
+            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2">Focus Region</div>
             <div className="space-y-1">
               {COUNTRIES.slice(0, 4).map(c => (
                 <button key={c.value} onClick={() => setCountry(c.value)}
@@ -89,7 +75,6 @@ export default function ExplorePage() {
                     background: country === c.value ? "rgba(200,75,49,0.12)" : "transparent",
                     color: country === c.value ? "#E8694A" : "#7A6E62",
                     border: `1px solid ${country === c.value ? "rgba(200,75,49,0.25)" : "transparent"}`,
-                    flexDirection: dir === 'rtl' ? 'row-reverse' : 'row',
                   }}>
                   <span>{c.emoji}</span>
                   <span className="font-heading font-medium">{c.value}</span>
@@ -100,12 +85,12 @@ export default function ExplorePage() {
 
           {/* Quick prompts */}
           <div className="p-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">{t('explore.quickQuestions')}</div>
+            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">Quick Questions</div>
             <div className="space-y-1">
               {STARTERS.map(s => (
                 <button key={s} onClick={() => send(s)}
                   className="w-full text-left text-xs text-stone-mist hover:text-terra-light px-3 py-2 rounded-lg hover:bg-white/3 transition-colors flex items-start gap-2">
-                  <ChevronRight className={`w-3 h-3 flex-shrink-0 mt-0.5 text-terra-dark ${dir === 'rtl' ? 'rotate-180' : ''}`} />{s}
+                  <ChevronRight className="w-3 h-3 flex-shrink-0 mt-0.5 text-terra-dark" />{s}
                 </button>
               ))}
             </div>
@@ -113,11 +98,10 @@ export default function ExplorePage() {
 
           {/* Featured spots */}
           <div className="p-4">
-            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">{t('explore.askAbout')}</div>
+            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">Ask About</div>
             {DEST_QUICK.map(d => (
               <button key={d.id} onClick={() => send(`Tell me about ${d.name} in ${d.country}`)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/3 transition-colors text-left mb-1"
-                style={{ flexDirection: dir === 'rtl' ? 'row-reverse' : 'row' }}>
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/3 transition-colors text-left mb-1">
                 <MapPin className="w-3 h-3 text-terra-dark flex-shrink-0" />
                 <div>
                   <div className="text-xs font-heading font-medium text-stone-mist">{d.name}</div>
@@ -128,25 +112,25 @@ export default function ExplorePage() {
           </div>
         </aside>
 
-        {/* Chat area */}
+        {/* ── Chat area ── */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3 border-b flex-shrink-0"
             style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(15,20,25,0.8)", backdropFilter: "blur(20px)" }}>
-            <div className="flex items-center gap-3" style={{ flexDirection: dir === 'rtl' ? 'row-reverse' : 'row' }}>
+            <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center"
                 style={{ background: "linear-gradient(135deg, #C84B31, #E8C98A)" }}>
                 <Brain className="w-5 h-5 text-white" />
               </div>
               <div>
-                <div className="font-heading font-semibold text-foreground text-sm">{t('explore.aiGuide')}</div>
-                <div className="flex items-center gap-1.5 text-xs text-stone-mist" style={{ flexDirection: dir === 'rtl' ? 'row-reverse' : 'row' }}>
+                <div className="font-heading font-semibold text-foreground text-sm">Rihla AI Guide</div>
+                <div className="flex items-center gap-1.5 text-xs text-stone-mist">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                  {t('explore.expertIn')}
+                  Expert in Tunisia & Maghreb • LLaMA 3.3
                 </div>
               </div>
             </div>
-            <button onClick={() => setMsgs([{ id: "0", role: "assistant", content: t('explore.resetMessage') }])}
+            <button onClick={() => { setMsgs([{ id: "0", role: "assistant", content: "Chat reset! Ask me anything about your journey." }]); }}
               className="text-stone-mist hover:text-foreground transition-colors p-2 rounded-lg hover:bg-white/5">
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -161,8 +145,9 @@ export default function ExplorePage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className={`flex gap-3 max-w-3xl ${msg.role === "user" ? (dir === 'rtl' ? "mr-auto flex-row" : "ml-auto flex-row-reverse") : ""}`}
+                  className={`flex gap-3 max-w-3xl ${msg.role === "user" ? "ml-auto flex-row-reverse" : ""}`}
                 >
+                  {/* Avatar */}
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
                     style={{ background: msg.role === "assistant" ? "linear-gradient(135deg, #C84B31, #E8C98A)" : "rgba(255,255,255,0.08)" }}>
                     {msg.role === "assistant"
@@ -170,6 +155,7 @@ export default function ExplorePage() {
                       : <span className="text-xs font-bold text-foreground">U</span>}
                   </div>
 
+                  {/* Bubble */}
                   <div
                     className="px-4 py-3 rounded-2xl text-sm leading-relaxed max-w-[85%]"
                     style={{
@@ -180,13 +166,14 @@ export default function ExplorePage() {
                   >
                     <div
                       className="prose prose-invert prose-sm max-w-none prose-headings:font-heading prose-headings:text-foreground prose-p:text-stone-mist prose-li:text-stone-mist prose-strong:text-sand-DEFAULT"
-                      dangerouslySetInnerHTML={{ __html: (typeof marked === 'function' ? marked(msg.content) : marked.parse(msg.content)) as string }}
+                      dangerouslySetInnerHTML={{ __html: marked(msg.content) as string }}
                     />
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
 
+            {/* Typing indicator */}
             {loading && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
@@ -210,6 +197,7 @@ export default function ExplorePage() {
           {/* Input */}
           <div className="p-4 border-t flex-shrink-0"
             style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(15,20,25,0.9)" }}>
+            {/* Mobile quick prompts */}
             <div className="flex gap-2 mb-3 overflow-x-auto pb-1 lg:hidden">
               {STARTERS.slice(0, 3).map(s => (
                 <button key={s} onClick={() => send(s)}
@@ -219,17 +207,17 @@ export default function ExplorePage() {
               ))}
             </div>
 
-            <div className="flex gap-3 items-end max-w-3xl mx-auto" style={{ flexDirection: dir === 'rtl' ? 'row-reverse' : 'row' }}>
+            <div className="flex gap-3 items-end max-w-3xl mx-auto">
               <div className="flex-1 rounded-xl overflow-hidden" style={{ background: "rgba(28,35,48,0.8)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <textarea
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-                  placeholder={t('explore.inputPlaceholder')}
+                  placeholder="Ask about destinations, food, culture, routes..."
                   rows={1}
                   className="w-full bg-transparent px-4 py-3 text-sm text-foreground placeholder:text-stone-mist outline-none resize-none max-h-32"
                   disabled={loading}
-                  style={{ minHeight: "44px", direction: dir }}
+                  style={{ minHeight: "44px" }}
                 />
               </div>
               <motion.button
@@ -241,7 +229,7 @@ export default function ExplorePage() {
               </motion.button>
             </div>
             <p className="text-xs text-center text-stone-mist mt-2 opacity-50">
-              {t('explore.footerNote')}
+              Expert in Tunisia, Morocco, Algeria, Egypt & Jordan
             </p>
           </div>
         </div>

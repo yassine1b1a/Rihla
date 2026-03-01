@@ -372,21 +372,22 @@ export default function ItineraryPage() {
 
   const validateStep = useCallback((stepIndex: number): boolean => {
     const errors: {[key: string]: string} = {};
-
+    
     if (stepIndex === 0) {
       if (!form.country) errors.country = "Please select a country";
       if (form.days < 1 || form.days > 30) errors.days = "Days must be between 1 and 30";
     }
-
+    
     if (stepIndex === 1) {
       if (!form.style) errors.style = "Please select a travel style";
       if (!form.budget) errors.budget = "Please select a budget";
     }
-
+    
     if (stepIndex === 2 && form.interests.length === 0) {
       errors.interests = "Please select at least one interest";
     }
-
+    
+    setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   }, [form.country, form.days, form.style, form.budget, form.interests.length]);
 
@@ -395,31 +396,14 @@ export default function ItineraryPage() {
   }, [step, validateStep]);
 
   const handleNext = () => {
-    const errors: {[key: string]: string} = {};
-    if (step === 0) {
-      if (!form.country) errors.country = "Please select a country";
-      if (form.days < 1 || form.days > 30) errors.days = "Days must be between 1 and 30";
-    }
-    if (step === 1) {
-      if (!form.style) errors.style = "Please select a travel style";
-      if (!form.budget) errors.budget = "Please select a budget";
-    }
-    if (step === 2 && form.interests.length === 0) {
-      errors.interests = "Please select at least one interest";
-    }
-    if (Object.keys(errors).length === 0) {
+    if (validateStep(step)) {
       setStep(step + 1);
-    } else {
-      setValidationErrors(errors);
     }
   };
 
   const generate = async () => {
-    // Final validation before submitting
-    const errors: {[key: string]: string} = {};
-    if (form.interests.length === 0) errors.interests = "Please select at least one interest";
-    if (Object.keys(errors).length > 0) { setValidationErrors(errors); return; }
-
+    if (!validateStep(2)) return;
+    
     setLoading(true);
     setError("");
     setValidationErrors({});
