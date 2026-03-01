@@ -180,7 +180,7 @@ export default function ExplorePage() {
                   >
                     <div
                       className="prose prose-invert prose-sm max-w-none prose-headings:font-heading prose-headings:text-foreground prose-p:text-stone-mist prose-li:text-stone-mist prose-strong:text-sand-DEFAULT"
-                      dangerouslySetInnerHTML={{ __html: marked(msg.content) as string }}
+                      dangerouslySetInnerHTML={{ __html: (typeof marked === 'function' ? marked(msg.content) : marked.parse(msg.content)) as string }}
                     />
                   </div>
                 </motion.div>
