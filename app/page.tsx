@@ -54,7 +54,8 @@ function FloatingCard({ dest, delay, x, y }: any) {
 }
 
 /* ─── Feature card ─── */
-function FeatureCard({ icon: Icon, title, desc, color, href, delay }: any) {
+/* ─── Feature card avec t en prop ─── */
+function FeatureCard({ icon: Icon, title, desc, color, href, delay, t }: any) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 32 }}
@@ -76,7 +77,7 @@ function FeatureCard({ icon: Icon, title, desc, color, href, delay }: any) {
           <p className="text-sm text-stone-mist leading-relaxed">{desc}</p>
           <div className="flex items-center gap-2 mt-4 text-xs font-heading font-medium opacity-0 group-hover:opacity-100 transition-opacity"
             style={{ color }}>
-            Explore <ArrowRight className="w-3.5 h-3.5" />
+            {"Explore"} <ArrowRight className="w-3.5 h-3.5" />
           </div>
         </motion.div>
       </Link>
@@ -158,7 +159,7 @@ function Stat({ value, label, icon: Icon }: any) {
 }
 
 export default function HomePage() {
-  // Add comprehensive debugging
+  
   console.log("🏠 HomePage rendering started");
   
   const heroRef = useRef<HTMLDivElement>(null);
@@ -168,7 +169,6 @@ export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   
-  // Debug all hooks and state
   console.log("🏠 Hooks initialized:", {
     hasHeroRef: !!heroRef.current,
     scrollYProgress: !!scrollYProgress,
@@ -180,15 +180,12 @@ export default function HomePage() {
     console.log("🏠 Component mounted at:", new Date().toISOString());
     setMounted(true);
     
-    // Check for any API calls that might be happening automatically
     const checkForApiCalls = () => {
-      // Monitor fetch requests
       const originalFetch = window.fetch;
       window.fetch = async (...args) => {
         const url = args[0]?.toString() || '';
         console.log("🌐 Fetch detected:", url);
         
-        // If it's the itinerary API, log it
         if (url.includes('/api/ai/itinerary')) {
           console.warn("⚠️ Unexpected API call to /api/ai/itinerary detected on homepage!");
           console.log("Request details:", args[1]);
@@ -205,7 +202,6 @@ export default function HomePage() {
         }
       };
 
-      // Cleanup
       return () => {
         window.fetch = originalFetch;
       };
@@ -215,7 +211,6 @@ export default function HomePage() {
     return cleanup;
   }, []);
 
-  // Try-catch block for the entire render
   try {
     console.log("🏠 Rendering with mounted =", mounted);
     
@@ -225,10 +220,10 @@ export default function HomePage() {
     }
 
     const features = [
-      { icon: Compass, title: "AI Itinerary Planner", desc: "Personalised multi-day itineraries crafted by AI — matching your style, budget, and passions to the perfect journey.", color: "#C84B31", href: "/itinerary" },
-      { icon: Brain, title: "AI Travel Concierge", desc: "Chat with an expert AI trained on deep Tunisia and Maghreb knowledge — 24/7, in English, French or Arabic.", color: "#E8C98A", href: "/explore" },
-      { icon: Camera, title: "Heritage Recognition", desc: "Point your camera at any ruin, mosque or monument to instantly unlock its history, legends and visiting secrets.", color: "#1A7A6E", href: "/heritage" },
-      { icon: Leaf, title: "Sustainability Dashboard", desc: "Live crowd forecasts, eco-scores, and responsible travel guidance to protect the destinations you love.", color: "#4ADE80", href: "/sustainability" },
+      { icon: Compass, title: "AI Itinerary Planner", desc: "Personalised multi-day itineraries crafted by AI", color: "#C84B31", href: "/itinerary" },
+      { icon: Brain, title: "AI Travel Concierge", desc: "Chat with an expert AI trained on Tunisia and Maghreb", color: "#E8C98A", href: "/explore" },
+      { icon: Camera, title: "Heritage Recognition", desc: "Point your camera to unlock history", color: "#1A7A6E", href: "/heritage" },
+      { icon: Leaf, title: "Sustainability Dashboard", desc: "Live crowd forecasts and eco-scores", color: "#4ADE80", href: "/sustainability" },
     ];
 
     const floatingDests = [
@@ -272,7 +267,9 @@ export default function HomePage() {
             >
               <span className="text-arabic text-lg text-sand-DEFAULT" style={{ lineHeight: 1.4 }}>رحلة</span>
               <span className="w-px h-4 bg-white/20" />
-              <span className="text-xs font-heading font-medium text-stone-mist tracking-widest uppercase">AI Tourism Ecosystem</span>
+              <span className="text-xs font-heading font-medium text-stone-mist tracking-widest uppercase">
+                {"North Africa"}
+              </span>
             </motion.div>
 
             {/* Main headline */}
@@ -282,7 +279,7 @@ export default function HomePage() {
               transition={{ delay: 0.2, duration: 0.8 }}
               className="font-display text-[clamp(3.5rem,12vw,9rem)] leading-[0.9] tracking-tight mb-6"
             >
-              <span className="block text-foreground">Discover</span>
+              <span className="block text-foreground">{"Discover"}</span>
               <span className="block text-terra-gradient">Tunisia</span>
               <span className="block text-foreground opacity-80 text-[0.7em]">&amp; Beyond</span>
             </motion.h1>
@@ -293,9 +290,7 @@ export default function HomePage() {
               transition={{ delay: 0.5, duration: 0.7 }}
               className="text-stone-mist text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-10 font-light"
             >
-              Personalised itineraries, AI cultural guides, heritage recognition, and sustainable travel insights —
-              all powered by advanced AI for the{" "}
-              <span className="text-sand-DEFAULT font-normal">Maghreb and Mediterranean</span>.
+              {"Personalized itineraries, AI cultural guides, heritage recognition, and sustainable travel insights"}
             </motion.p>
 
             {/* CTA row */}
@@ -314,7 +309,7 @@ export default function HomePage() {
                   onClick={() => console.log("🏠 Clicked: Plan My Journey")}
                 >
                   <Sparkles className="w-5 h-5" />
-                  Plan My Journey
+                  {"Plan My Journey"}
                 </motion.button>
               </Link>
               <Link href="/explore">
@@ -325,7 +320,7 @@ export default function HomePage() {
                   onClick={() => console.log("🏠 Clicked: Talk to AI Guide")}
                 >
                   <Brain className="w-5 h-5" />
-                  Talk to AI Guide
+                  {"Talk to AI Guide"}
                 </motion.button>
               </Link>
             </motion.div>
@@ -337,10 +332,15 @@ export default function HomePage() {
               transition={{ delay: 1 }}
               className="flex flex-wrap items-center justify-center gap-6 mt-10 text-xs text-stone-mist"
             >
-              {["10+ Tunisian Destinations", "UNESCO Heritage Sites", "Sustainable Travel Certified", "Arabic · French · English"].map((t) => (
-                <div key={t} className="flex items-center gap-1.5">
+              {[
+                "Destinations",
+                "UNESCO Sites",
+                "Sustainable",
+                "Languages"
+              ].map((text) => (
+                <div key={text} className="flex items-center gap-1.5">
                   <span className="w-1 h-1 rounded-full bg-terra-DEFAULT" />
-                  {t}
+                  {text}
                 </div>
               ))}
             </motion.div>
@@ -353,7 +353,7 @@ export default function HomePage() {
             transition={{ delay: 1.5 }}
             className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
           >
-            <span className="text-xs text-stone-mist font-mono tracking-widest uppercase">Explore</span>
+            <span className="text-xs text-stone-mist font-mono tracking-widest uppercase">{"Scroll to explore"}</span>
             <motion.div animate={{ y: [0, 6, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
               <ChevronDown className="w-5 h-5 text-terra-DEFAULT" />
             </motion.div>
@@ -369,12 +369,12 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <p className="text-xs font-mono tracking-widest text-terra-DEFAULT uppercase mb-3">Powered by AI</p>
+              <p className="text-xs font-mono tracking-widest text-terra-DEFAULT uppercase mb-3">{"Powered by AI"}</p>
               <h2 className="font-display text-5xl md:text-6xl text-foreground mb-4">
-                Four AI <span className="text-terra-gradient">Superpowers</span>
+                {"Four AI"} <span className="text-terra-gradient">{"Superpowers"}</span>
               </h2>
               <p className="text-stone-mist text-lg max-w-xl mx-auto">
-                Every tool you need to experience the Maghreb deeply, responsibly, and unforgettably.
+                {"Everything you need to explore the Maghreb intelligently and responsibly."}
               </p>
             </motion.div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -399,10 +399,10 @@ export default function HomePage() {
               className="flex items-end justify-between mb-10"
             >
               <div>
-                <p className="text-xs font-mono tracking-widest text-teal-light uppercase mb-2">Featured Destinations</p>
+                <p className="text-xs font-mono tracking-widest text-teal-light uppercase mb-2">{"Featured Destinations"}</p>
                 <h2 className="font-display text-5xl md:text-6xl">
-                  <span className="text-foreground">Places That</span>{" "}
-                  <span className="text-teal-gradient">Endure</span>
+                  <span className="text-foreground">{"Places that"}</span>{" "}
+                  <span className="text-teal-gradient">{"Endure"}</span>
                 </h2>
               </div>
               <Link href="/explore">
@@ -410,7 +410,7 @@ export default function HomePage() {
                   whileHover={{ scale: 1.03 }}
                   className="btn-outline px-5 py-2.5 rounded-xl text-sm hidden md:flex items-center gap-2"
                 >
-                  View All <ArrowRight className="w-4 h-4" />
+                  {"View All Destinations"} <ArrowRight className="w-4 h-4" />
                 </motion.button>
               </Link>
             </motion.div>
@@ -426,10 +426,10 @@ export default function HomePage() {
         {/* ── STATS ─────────────────────────────────────────────────────────── */}
         <section className="relative z-10 py-20 px-4 border-y border-white/5">
           <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-white/5">
-            <Stat value="10+" label="Tunisian Destinations" icon={MapPin} />
-            <Stat value="4"   label="UNESCO Sites Covered" icon={Landmark} />
-            <Stat value="AI"  label="Real-time Insights"   icon={Sparkles} />
-            <Stat value="3"   label="Languages Supported"  icon={Globe} />
+            <Stat value="10+" label={"Destinations"} icon={MapPin} />
+            <Stat value="4"   label={"UNESCO Sites"} icon={Landmark} />
+            <Stat value="AI"  label={"AI-Powered Insights"} icon={Sparkles} />
+            <Stat value="3"   label={"Languages"} icon={Globe} />
           </div>
         </section>
 
@@ -442,17 +442,17 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <p className="text-xs font-mono tracking-widest text-terra-DEFAULT uppercase mb-3">Simple & Intelligent</p>
+              <p className="text-xs font-mono tracking-widest text-terra-DEFAULT uppercase mb-3">{"Simple & Smart"}</p>
               <h2 className="font-display text-5xl md:text-6xl text-foreground">
-                Your Journey, <span className="text-terra-gradient">Reimagined</span>
+                {"Your Journey"}, <span className="text-terra-gradient">{"Reimagined"}</span>
               </h2>
             </motion.div>
 
             <div className="grid md:grid-cols-3 gap-8">
               {[
-                { n: "01", title: "Tell us your dream", desc: "Share your travel style, interests, budget and how many days you have. Our AI listens deeply.", icon: Sparkles },
-                { n: "02", title: "AI crafts your journey", desc: "In seconds, receive a bespoke itinerary with cultural context, practical tips, and eco-scores.", icon: Brain },
-                { n: "03", title: "Explore with confidence", desc: "Use the AI guide on-site, recognise heritage monuments, and travel sustainably.", icon: Compass },
+                { n: "01", title: "Tell us your dream", desc: "Share your travel style, dates, budget, and interests with our AI.", icon: Sparkles },
+                { n: "02", title: "AI crafts your plan", desc: "Get a personalized itinerary with cultural context and sustainable recommendations.", icon: Brain },
+                { n: "03", title: "Explore with confidence", desc: "Access live crowd data, heritage info, and local insights as you travel.", icon: Compass },
               ].map((step, i) => (
                 <motion.div
                   key={step.n}
@@ -496,13 +496,12 @@ export default function HomePage() {
 
               <div className="relative z-10">
                 <div className="text-arabic text-4xl text-sand-DEFAULT mb-2" style={{ lineHeight: 1.6 }}>أهلاً وسهلاً</div>
-                <p className="text-xs text-stone-mist font-mono mb-6">Welcome — Marhaba</p>
+                <p className="text-xs text-stone-mist font-mono mb-6">{"Welcome"} — Marhaba</p>
                 <h2 className="font-display text-4xl md:text-5xl text-foreground mb-4">
-                  Begin Your <span className="text-terra-gradient">Rihla</span> Today
+                  {"Begin your"} <span className="text-terra-gradient">Rihla</span> {"journey today"}
                 </h2>
                 <p className="text-stone-mist max-w-xl mx-auto mb-8 leading-relaxed">
-                  Join travellers discovering the authentic Maghreb — from Roman amphitheatres to Saharan dunes,
-                  from ancient medinas to coastal paradise.
+                  {"Join thousands of travellers discovering the Maghreb with AI."}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link href="/auth">
@@ -511,12 +510,12 @@ export default function HomePage() {
                       className="btn-terra px-8 py-4 rounded-xl flex items-center gap-2"
                       style={{ boxShadow: "0 8px 32px rgba(200,75,49,0.3)" }}
                     >
-                      <Users className="w-5 h-5" /> Create Free Account
+                      <Users className="w-5 h-5" /> {"Create Free Account"}
                     </motion.button>
                   </Link>
                   <Link href="/itinerary">
                     <motion.button whileHover={{ scale: 1.03 }} className="btn-outline px-8 py-4 rounded-xl flex items-center gap-2">
-                      <Wind className="w-5 h-5" /> Try Without Account
+                      <Wind className="w-5 h-5" /> {"Try Without Account"}
                     </motion.button>
                   </Link>
                 </div>
@@ -533,30 +532,40 @@ export default function HomePage() {
                 <div className="font-display text-3xl text-terra-gradient mb-1">Rihla</div>
                 <div className="text-arabic text-lg text-sand-DEFAULT opacity-60 mb-2">رحلة</div>
                 <p className="text-stone-mist text-sm max-w-xs">
-                  AI-powered tourism ecosystem for Tunisia, North Africa and the Maghreb.
-                </p>
-                <p className="text-xs text-stone-light mt-3 font-mono opacity-50">
-                  Submitted to AINC'26 — AI Innovation Challenge
+                  {"AI-powered travel for the Maghreb — responsible, personalized, and culturally rich."}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-8 text-sm">
                 <div>
-                  <div className="text-foreground font-heading font-semibold mb-3">Explore</div>
-                  {[["Itinerary Planner", "/itinerary"], ["AI Travel Guide", "/explore"], ["Heritage Guide", "/heritage"], ["Sustainability", "/sustainability"]].map(([l, h]) => (
-                    <Link key={l} href={h}><div className="text-stone-mist hover:text-terra-light transition-colors py-1 cursor-pointer">{l}</div></Link>
+                  <div className="text-foreground font-heading font-semibold mb-3">{"Explore"}</div>
+                  {[
+                    ["AI Itinerary Planner", "/itinerary"],
+                    ["AI Travel Concierge", "/explore"],
+                    ["Heritage Recognition", "/heritage"],
+                    ["Sustainability Dashboard", "/sustainability"]
+                  ].map(([l, h]) => (
+                    <Link key={l as string} href={h as string}>
+                      <div className="text-stone-mist hover:text-terra-light transition-colors py-1 cursor-pointer">{l}</div>
+                    </Link>
                   ))}
                 </div>
                 <div>
-                  <div className="text-foreground font-heading font-semibold mb-3">Platform</div>
-                  {[["Sign In", "/auth"], ["Dashboard", "/dashboard"], ["About Rihla", "#"], ["AINC'26", "#"]].map(([l, h]) => (
-                    <Link key={l} href={h}><div className="text-stone-mist hover:text-terra-light transition-colors py-1 cursor-pointer">{l}</div></Link>
+                  <div className="text-foreground font-heading font-semibold mb-3">{"Platform"}</div>
+                  {[
+                    ["Sign In", "/auth"],
+                    ["Dashboard", "/dashboard"],
+                    ["About", "#"],
+                  ].map(([l, h]) => (
+                    <Link key={l as string} href={h as string}>
+                      <div className="text-stone-mist hover:text-terra-light transition-colors py-1 cursor-pointer">{l}</div>
+                    </Link>
                   ))}
                 </div>
               </div>
             </div>
             <div className="border-t pt-6 flex flex-col md:flex-row justify-between items-center gap-3 text-xs text-stone-mist font-mono"
               style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-              <span>© 2026 Rihla — AI Tourism Ecosystem. Built for AINC'26.</span>
+              <span>© 2026 Rihla — {"All rights reserved"}</span>
               <span>Tunisia · Morocco · Algeria · Egypt · Jordan</span>
             </div>
           </div>
@@ -568,13 +577,13 @@ export default function HomePage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F1419] text-white">
         <div className="text-center">
-          <h1 className="text-2xl font-display mb-4">Something went wrong</h1>
-          <p className="text-stone-mist">Please check the console for details</p>
+          <h1 className="text-2xl font-display mb-4">{"Something went wrong"}</h1>
+          <p className="text-stone-mist">{"We encountered an error. Please try again."}</p>
           <button 
             onClick={() => window.location.reload()}
             className="mt-4 btn-terra px-6 py-2 rounded-lg"
           >
-            Reload Page
+            {"Reload Page"}
           </button>
         </div>
       </div>

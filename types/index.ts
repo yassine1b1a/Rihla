@@ -14,7 +14,6 @@ export interface Profile {
   preferences?: {
     theme?: 'dark' | 'light';
     notifications?: boolean;
-    language?: 'en' | 'fr' | 'ar';
   };
   sustainability_score?: number;
   saved_itineraries?: string[];
@@ -138,7 +137,6 @@ export interface UserProfile {
   email: string;
   full_name: string | null;
   avatar_url: string | null;
-  preferred_language: "en" | "fr" | "ar";
   travel_style: TravelStyle | null;
   saved_destinations: string[];
   created_at: string;

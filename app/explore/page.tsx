@@ -7,30 +7,29 @@ import { DESTINATIONS, COUNTRIES } from "@/lib/data/destinations";
 import { Navbar } from "@/components/layout/Navbar";
 import { marked } from "marked";
 
-const STARTERS = [
-  "What are the absolute must-see places in Tunisia?",
-  "Plan a 3-day trip to the Sahara from Tunis",
-  "Tell me about the medina of Kairouan",
-  "What's the best time to visit Djerba?",
-  "What Tunisian food should I definitely try?",
-  "Is Tunisia safe for solo female travellers?",
-];
-
-const DEST_QUICK = DESTINATIONS.slice(0, 6);
-
 type Msg = { id: string; role: "user" | "assistant"; content: string };
 
 export default function ExplorePage() {
-  const [msgs, setMsgs]       = useState<Msg[]>([{
-    id: "0", role: "assistant",
-    content: `# مرحباً — Marhaba! Welcome to Rihla AI 🧭\n\nI'm your personal travel expert for **Tunisia and the Maghreb**. I know every medina, desert track, UNESCO site, hidden beach and local restaurant worth knowing.\n\nAsk me anything:\n- 🏛️ *Ancient ruins and cultural sites*\n- 🍽️ *Local food, where to eat, what to try*\n- 🗺️ *Itinerary ideas and route planning*\n- 🤝 *Cultural etiquette and practical tips*\n- 🌿 *Sustainable and responsible travel*\n\n**Where does your journey begin?**`,
-  }]);
-  const [input, setInput]     = useState("");
+
+  const STARTERS = [
+    "What are the absolute must-see places in Tunisia?",
+    "Plan a 3-day trip to the Sahara from Tunis",
+    "Tell me about the medina of Kairouan",
+    "What's the best time to visit Djerba?",
+    "What Tunisian food should I definitely try?",
+    "Is Tunisia safe for solo female travellers?",
+  ];
+
+  const WELCOME_MSG = `# مرحباً — Marhaba! Welcome to Rihla AI 🧭\n\nI'm your personal travel expert for **Tunisia and the Maghreb**. I know every medina, desert track, UNESCO site, hidden beach and local restaurant worth knowing.\n\nAsk me anything:\n- 🏛️ *Ancient ruins and cultural sites*\n- 🍽️ *Local food, where to eat, what to try*\n- 🗺️ *Itinerary ideas and route planning*\n- 🤝 *Cultural etiquette and practical tips*\n- 🌿 *Sustainable and responsible travel*\n\n**Where does your journey begin?**`;
+
+  const [msgs, setMsgs] = useState<Msg[]>([{ id: "0", role: "assistant", content: WELCOME_MSG }]);
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [country, setCountry] = useState("Tunisia");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+
 
   const send = async (text: string) => {
     if (!text.trim() || loading) return;
@@ -56,17 +55,19 @@ export default function ExplorePage() {
     }
   };
 
+  const DEST_QUICK = DESTINATIONS.slice(0, 6);
+
   return (
-    <div className="flex h-screen bg-[#0F1419] overflow-hidden flex-col">
+    <div className="flex h-screen bg-[#0F1419] overflow-hidden flex-col" >
       <Navbar />
 
       <div className="flex flex-1 overflow-hidden pt-16">
-        {/* ── Sidebar ── */}
+        {/* Sidebar */}
         <aside className="hidden lg:flex flex-col w-72 border-r flex-shrink-0 overflow-y-auto"
           style={{ background: "rgba(15,20,25,0.95)", borderColor: "rgba(255,255,255,0.06)" }}>
           {/* Country filter */}
           <div className="p-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2">Focus Region</div>
+            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2">{"Focus Region"}</div>
             <div className="space-y-1">
               {COUNTRIES.slice(0, 4).map(c => (
                 <button key={c.value} onClick={() => setCountry(c.value)}
@@ -75,6 +76,7 @@ export default function ExplorePage() {
                     background: country === c.value ? "rgba(200,75,49,0.12)" : "transparent",
                     color: country === c.value ? "#E8694A" : "#7A6E62",
                     border: `1px solid ${country === c.value ? "rgba(200,75,49,0.25)" : "transparent"}`,
+                    
                   }}>
                   <span>{c.emoji}</span>
                   <span className="font-heading font-medium">{c.value}</span>
@@ -85,12 +87,12 @@ export default function ExplorePage() {
 
           {/* Quick prompts */}
           <div className="p-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">Quick Questions</div>
+            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">{"Quick Questions"}</div>
             <div className="space-y-1">
               {STARTERS.map(s => (
                 <button key={s} onClick={() => send(s)}
                   className="w-full text-left text-xs text-stone-mist hover:text-terra-light px-3 py-2 rounded-lg hover:bg-white/3 transition-colors flex items-start gap-2">
-                  <ChevronRight className="w-3 h-3 flex-shrink-0 mt-0.5 text-terra-dark" />{s}
+                  <ChevronRight className={`w-3 h-3 flex-shrink-0 mt-0.5 text-terra-dark ${''}`} />{s}
                 </button>
               ))}
             </div>
@@ -98,10 +100,11 @@ export default function ExplorePage() {
 
           {/* Featured spots */}
           <div className="p-4">
-            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">Ask About</div>
+            <div className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-3">{"Ask About"}</div>
             {DEST_QUICK.map(d => (
               <button key={d.id} onClick={() => send(`Tell me about ${d.name} in ${d.country}`)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/3 transition-colors text-left mb-1">
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/3 transition-colors text-left mb-1"
+                style={{  }}>
                 <MapPin className="w-3 h-3 text-terra-dark flex-shrink-0" />
                 <div>
                   <div className="text-xs font-heading font-medium text-stone-mist">{d.name}</div>
@@ -112,25 +115,25 @@ export default function ExplorePage() {
           </div>
         </aside>
 
-        {/* ── Chat area ── */}
+        {/* Chat area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3 border-b flex-shrink-0"
             style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(15,20,25,0.8)", backdropFilter: "blur(20px)" }}>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3" style={{  }}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center"
                 style={{ background: "linear-gradient(135deg, #C84B31, #E8C98A)" }}>
                 <Brain className="w-5 h-5 text-white" />
               </div>
               <div>
-                <div className="font-heading font-semibold text-foreground text-sm">Rihla AI Guide</div>
-                <div className="flex items-center gap-1.5 text-xs text-stone-mist">
+                <div className="font-heading font-semibold text-foreground text-sm">{"Rihla AI Guide"}</div>
+                <div className="flex items-center gap-1.5 text-xs text-stone-mist" style={{  }}>
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                  Expert in Tunisia & Maghreb • LLaMA 3.3
+                  {"Expert in Tunisia & Maghreb"}
                 </div>
               </div>
             </div>
-            <button onClick={() => { setMsgs([{ id: "0", role: "assistant", content: "Chat reset! Ask me anything about your journey." }]); }}
+            <button onClick={() => setMsgs([{ id: "0", role: "assistant", content: WELCOME_MSG }])}
               className="text-stone-mist hover:text-foreground transition-colors p-2 rounded-lg hover:bg-white/5">
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -147,7 +150,6 @@ export default function ExplorePage() {
                   transition={{ duration: 0.3 }}
                   className={`flex gap-3 max-w-3xl ${msg.role === "user" ? "ml-auto flex-row-reverse" : ""}`}
                 >
-                  {/* Avatar */}
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
                     style={{ background: msg.role === "assistant" ? "linear-gradient(135deg, #C84B31, #E8C98A)" : "rgba(255,255,255,0.08)" }}>
                     {msg.role === "assistant"
@@ -155,7 +157,6 @@ export default function ExplorePage() {
                       : <span className="text-xs font-bold text-foreground">U</span>}
                   </div>
 
-                  {/* Bubble */}
                   <div
                     className="px-4 py-3 rounded-2xl text-sm leading-relaxed max-w-[85%]"
                     style={{
@@ -166,14 +167,13 @@ export default function ExplorePage() {
                   >
                     <div
                       className="prose prose-invert prose-sm max-w-none prose-headings:font-heading prose-headings:text-foreground prose-p:text-stone-mist prose-li:text-stone-mist prose-strong:text-sand-DEFAULT"
-                      dangerouslySetInnerHTML={{ __html: marked(msg.content) as string }}
+                      dangerouslySetInnerHTML={{ __html: marked.parse(msg.content) as string }}
                     />
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
 
-            {/* Typing indicator */}
             {loading && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
@@ -197,7 +197,6 @@ export default function ExplorePage() {
           {/* Input */}
           <div className="p-4 border-t flex-shrink-0"
             style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(15,20,25,0.9)" }}>
-            {/* Mobile quick prompts */}
             <div className="flex gap-2 mb-3 overflow-x-auto pb-1 lg:hidden">
               {STARTERS.slice(0, 3).map(s => (
                 <button key={s} onClick={() => send(s)}
@@ -207,13 +206,13 @@ export default function ExplorePage() {
               ))}
             </div>
 
-            <div className="flex gap-3 items-end max-w-3xl mx-auto">
+            <div className="flex gap-3 items-end max-w-3xl mx-auto" style={{  }}>
               <div className="flex-1 rounded-xl overflow-hidden" style={{ background: "rgba(28,35,48,0.8)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <textarea
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-                  placeholder="Ask about destinations, food, culture, routes..."
+                  placeholder={"Ask about destinations, food, culture, routes..."}
                   rows={1}
                   className="w-full bg-transparent px-4 py-3 text-sm text-foreground placeholder:text-stone-mist outline-none resize-none max-h-32"
                   disabled={loading}
@@ -229,7 +228,7 @@ export default function ExplorePage() {
               </motion.button>
             </div>
             <p className="text-xs text-center text-stone-mist mt-2 opacity-50">
-              Expert in Tunisia, Morocco, Algeria, Egypt & Jordan
+              {"Expert in Tunisia, Morocco, Algeria, Egypt & Jordan"}
             </p>
           </div>
         </div>

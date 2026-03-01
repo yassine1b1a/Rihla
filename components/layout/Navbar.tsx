@@ -8,10 +8,10 @@ import { Compass, Menu, X, LogIn, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const LINKS = [
-  { href: "/itinerary",     label: "Plan Trip" },
+  { href: "/itinerary",     label: "Plan a Trip" },
   { href: "/explore",       label: "AI Guide" },
   { href: "/heritage",      label: "Heritage" },
-  { href: "/sustainability", label: "Eco Insights" },
+  { href: "/sustainability", label: "Eco Dashboard" },
 ];
 
 export function Navbar() {
@@ -28,7 +28,6 @@ export function Navbar() {
     return () => l?.subscription.unsubscribe();
   }, []);
 
-  // Fermer le menu mobile quand la route change
   useEffect(() => {
     setOpen(false);
   }, [path]);
@@ -85,9 +84,8 @@ export function Navbar() {
             })}
           </div>
 
-          {/* Right side: Auth only */}
+          {/* Right side: Auth */}
           <div className="hidden md:flex items-center gap-3">
-            {/* Auth buttons */}
             {user ? (
               <Link href="/dashboard">
                 <motion.button
@@ -106,14 +104,14 @@ export function Navbar() {
                 </Link>
                 <Link href="/auth?mode=signup">
                   <motion.button whileHover={{ scale: 1.03 }} className="btn-terra px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                    Start Free
+                    Sign Up
                   </motion.button>
                 </Link>
               </>
             )}
           </div>
 
-          {/* Mobile: Burger only */}
+          {/* Mobile: Burger */}
           <div className="flex md:hidden items-center gap-2">
             <button className="text-stone-mist hover:text-foreground transition-colors" onClick={() => setOpen(!open)}>
               {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -140,7 +138,7 @@ export function Navbar() {
               </motion.div>
             </Link>
           ))}
-          
+
           {/* Mobile auth */}
           {user ? (
             <Link href="/dashboard" onClick={() => setOpen(false)}>
@@ -166,7 +164,7 @@ export function Navbar() {
                   whileHover={{ x: 4 }}
                   className="mt-2 px-4 py-3 rounded-lg text-sm font-heading font-bold btn-terra text-center"
                 >
-                  Start Free
+                  Sign Up
                 </motion.div>
               </Link>
             </>
