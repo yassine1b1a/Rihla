@@ -891,12 +891,19 @@ export async function POST(req: NextRequest) {
     });
 
     // ── Visit time recommendations (climate-driven + AI-enhanced) ─────────
-    const bestVisitTimes: string[] = [];
-    if (climateData?.avgTempMax > 32) {
-      bestVisitTimes.push("Early morning (6–10am)", "Late evening (5–8pm)");
-    } else if (climateData?.avgTempMax < 10) {
-      bestVisitTimes.push("Midday (11am–3pm) for warmth");
+      const bestVisitTimes: string[] = [];
+    
+    // Fixed: Proper null check for climateData
+    if (climateData) {
+      if (climateData.avgTempMax > 32) {
+        bestVisitTimes.push("Early morning (6–10am)", "Late evening (5–8pm)");
+      } else if (climateData.avgTempMax < 10) {
+        bestVisitTimes.push("Midday (11am–3pm) for warmth");
+      } else {
+        bestVisitTimes.push("Morning (9–11am)", "Afternoon (2–5pm)");
+      }
     } else {
+      // Default recommendations when climate data is unavailable
       bestVisitTimes.push("Morning (9–11am)", "Afternoon (2–5pm)");
     }
 
