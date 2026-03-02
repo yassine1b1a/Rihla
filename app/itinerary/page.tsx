@@ -5,9 +5,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   Sparkles, ChevronRight, ChevronLeft, MapPin, Clock, Leaf, Star, 
   Download, Share2, RefreshCw, Sun, Utensils, BedDouble, Info,
-  AlertCircle, CheckCircle, XCircle, Loader2, Youtube, Film, Play, User, X
+  AlertCircle, CheckCircle, XCircle, Loader2, Youtube, Film, Play, User, X, Globe
 } from "lucide-react";
-import { COUNTRIES, TRAVEL_INTERESTS } from "@/lib/data/destinations";
+import { TRAVEL_INTERESTS } from "@/lib/data/destinations";
 import { Navbar } from "@/components/layout/Navbar";
 import { youtubeService } from "@/lib/youtube";
 import type { Itinerary, ItineraryDay, Destination } from "@/types";
@@ -26,6 +26,15 @@ const BUDGETS = [
   { id: "budget",     label: "Budget", sub: "< $50/day" },
   { id: "mid-range",  label: "Mid-range", sub: "$50–150/day" },
   { id: "luxury",     label: "Luxury", sub: "$150+/day" },
+];
+
+// Popular countries list for suggestions
+const POPULAR_COUNTRIES = [
+  "Italy", "France", "Spain", "Greece", "Japan", "Thailand", "USA", 
+  "Mexico", "Brazil", "South Africa", "India", "Vietnam", "Peru", 
+  "Australia", "New Zealand", "Morocco", "Egypt", "Turkey", "Portugal",
+  "Croatia", "Iceland", "Norway", "Switzerland", "Austria", "Germany",
+  "United Kingdom", "Ireland", "Canada", "Argentina", "Colombia"
 ];
 
 // DayCard component (unchanged)
@@ -331,6 +340,8 @@ export default function ItineraryPage() {
   const [result, setResult] = useState<Itinerary | null>(null);
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
+  const [countryInput, setCountryInput] = useState("");
 
   const [form, setForm] = useState({
     country: "Tunisia",
@@ -340,6 +351,14 @@ export default function ItineraryPage() {
     interests: [] as string[],
     special: "",
   });
+
+  // Filter country suggestions based on input
+  const filteredCountries = useMemo(() => {
+    if (!countryInput) return POPULAR_COUNTRIES.slice(0, 8);
+    return POPULAR_COUNTRIES.filter(c => 
+      c.toLowerCase().includes(countryInput.toLowerCase())
+    ).slice(0, 8);
+  }, [countryInput]);
 
   // Reset open day when result changes
   useEffect(() => {
@@ -374,7 +393,7 @@ export default function ItineraryPage() {
     const errors: {[key: string]: string} = {};
 
     if (stepIndex === 0) {
-      if (!form.country) errors.country = "Please select a country";
+      if (!form.country) errors.country = "Please enter a country";
       if (form.days < 1 || form.days > 30) errors.days = "Days must be between 1 and 30";
     }
 
@@ -387,6 +406,7 @@ export default function ItineraryPage() {
       errors.interests = "Please select at least one interest";
     }
 
+    setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   }, [form.country, form.days, form.style, form.budget, form.interests.length]);
 
@@ -395,31 +415,20 @@ export default function ItineraryPage() {
   }, [step, validateStep]);
 
   const handleNext = () => {
-    const errors: {[key: string]: string} = {};
-    if (step === 0) {
-      if (!form.country) errors.country = "Please select a country";
-      if (form.days < 1 || form.days > 30) errors.days = "Days must be between 1 and 30";
-    }
-    if (step === 1) {
-      if (!form.style) errors.style = "Please select a travel style";
-      if (!form.budget) errors.budget = "Please select a budget";
-    }
-    if (step === 2 && form.interests.length === 0) {
-      errors.interests = "Please select at least one interest";
-    }
-    if (Object.keys(errors).length === 0) {
+    if (validateStep(step)) {
       setStep(step + 1);
-    } else {
-      setValidationErrors(errors);
     }
   };
 
-  const generate = async () => {
-    // Final validation before submitting
-    const errors: {[key: string]: string} = {};
-    if (form.interests.length === 0) errors.interests = "Please select at least one interest";
-    if (Object.keys(errors).length > 0) { setValidationErrors(errors); return; }
+  const handleCountrySelect = (country: string) => {
+    updateForm("country", country);
+    setCountryInput(country);
+    setShowCountrySuggestions(false);
+  };
 
+  const generate = async () => {
+    if (!validateStep(2)) return;
+    
     setLoading(true);
     setError("");
     setValidationErrors({});
@@ -613,7 +622,7 @@ export default function ItineraryPage() {
             </motion.div>
           )}
 
-          {/* NEW: YouTube Videos Section */}
+          {/* YouTube Videos Section */}
           <ItineraryVideos destination={result.country} country={result.country} />
         </div>
       </div>
@@ -660,7 +669,7 @@ export default function ItineraryPage() {
           ))}
         </div>
 
-        {/* Step content (rest of your wizard remains the same) */}
+        {/* Step content */}
         <motion.div
           key={step}
           initial={{ opacity: 0, x: 20 }}
@@ -682,22 +691,43 @@ export default function ItineraryPage() {
               
               <div>
                 <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">Country</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {COUNTRIES.map(c => (
-                    <motion.button 
-                      key={c.value} 
-                      whileTap={{ scale: 0.97 }} 
-                      onClick={() => updateForm("country", c.value)}
-                      className="p-3 rounded-xl text-left transition-all"
-                      style={{
-                        background: form.country === c.value ? "rgba(200,75,49,0.15)" : "rgba(28,35,48,0.6)",
-                        border: `1px solid ${form.country === c.value ? "rgba(200,75,49,0.4)" : "rgba(255,255,255,0.06)"}`,
-                        color: form.country === c.value ? "#E8694A" : "#7A6E62",
-                      }}>
-                      <div className="text-lg mb-0.5">{c.emoji}</div>
-                      <div className="text-xs font-heading font-medium">{c.value}</div>
-                    </motion.button>
-                  ))}
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="w-4 h-4 text-terra-light" />
+                    <span className="text-xs text-stone-mist">Type any country in the world</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={countryInput}
+                    onChange={(e) => {
+                      setCountryInput(e.target.value);
+                      updateForm("country", e.target.value);
+                      setShowCountrySuggestions(true);
+                    }}
+                    onFocus={() => setShowCountrySuggestions(true)}
+                    placeholder="e.g. Italy, Japan, Brazil, South Africa..."
+                    className="w-full input-rihla px-4 py-3 rounded-xl text-sm"
+                  />
+                  
+                  {/* Country suggestions */}
+                  {showCountrySuggestions && filteredCountries.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute z-10 mt-1 w-full rounded-xl overflow-hidden"
+                      style={{ background: "#1C2330", border: "1px solid rgba(255,255,255,0.06)" }}
+                    >
+                      {filteredCountries.map((country) => (
+                        <button
+                          key={country}
+                          onClick={() => handleCountrySelect(country)}
+                          className="w-full text-left px-4 py-2.5 text-sm text-stone-mist hover:text-foreground hover:bg-white/5 transition-colors"
+                        >
+                          {country}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
                 </div>
               </div>
               
