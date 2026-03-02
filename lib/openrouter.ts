@@ -25,13 +25,11 @@ try {
   throw error;
 }
 
-// FIXED MODELS - Using only models that definitely work
-export const MODEL = "meta-llama/llama-3.3-70b-instruct"; // Paid model (works)
-export const MODEL_FAST = "meta-llama/llama-3.2-3b-instruct"; // Paid model (cheap)
-export const MODEL_FREE = "gryphe/mythomax-l2-13b:free"; // Free model that works
-
-// For vision tasks (image recognition)
-export const MODEL_VISION = "anthropic/claude-3-haiku"; // Paid but reliable for images
+// Models
+export const MODEL = "meta-llama/llama-3.3-70b-instruct";
+export const MODEL_FAST = "meta-llama/llama-3.2-3b-instruct";
+export const MODEL_FREE = "gryphe/mythomax-l2-13b:free";
+export const MODEL_VISION = "anthropic/claude-3-haiku";
 
 // ─── 1. Travel Planning Chat ───────────────────────────────────────────────
 export async function travelChat(
@@ -41,9 +39,8 @@ export async function travelChat(
   try {
     console.log("🤖 travelChat called with", { messagesCount: messages.length, context });
 
-    const system = `You are Rihla AI — an expert travel concierge specialising in Tunisia, North Africa and the Maghreb region.
-You have deep knowledge of: Tunisian culture, history, cuisine, geography, hidden gems, Sahara Desert, Medinas, Carthage, Djerba, Sidi Bou Said, Kairouan, Douz, Tataouine, Tozeur, Cap Bon, and beyond.
-You also know Morocco, Algeria, Libya, Egypt and the broader MENA region.
+    const system = `You are Rihla AI — an expert travel concierge with comprehensive knowledge of destinations worldwide.
+You have deep knowledge of: culture, history, cuisine, geography, hidden gems, landmarks, local customs, and travel tips for any country.
 ${context?.country ? `Current focus: ${context.country}` : ""}
 ${context?.interests?.length ? `Traveller interests: ${context.interests.join(", ")}` : ""}
 
@@ -51,7 +48,7 @@ Be warm, knowledgeable, and inspiring. Give specific, actionable advice. Mention
 Respond in 2-4 paragraphs. Use markdown formatting where helpful. Never be generic.`;
 
     const res = await openrouter.chat.completions.create({
-      model: MODEL, // Using the reliable paid model
+      model: MODEL,
       messages: [{ role: "system", content: system }, ...messages],
       max_tokens: 900,
       temperature: 0.7,
@@ -67,7 +64,6 @@ Respond in 2-4 paragraphs. Use markdown formatting where helpful. Never be gener
   }
 }
 
-// ─── 2. Personalised Itinerary Generator ──────────────────────────────────
 // ─── 2. Personalised Itinerary Generator ──────────────────────────────────
 export async function generateItinerary(params: {
   country: string;
@@ -119,8 +115,7 @@ The JSON must follow this exact structure:
   ]
 }
 
-Make it deeply specific to ${params.country}. Include local cuisine recommendations, cultural etiquette, hidden gems.
-For Tunisia: include medinas, archaeological sites, desert experiences, coastal towns as appropriate.`;
+Make it deeply specific to ${params.country}. Include local cuisine recommendations, cultural etiquette, hidden gems, and must-visit attractions.`;
 
     console.log("🗺️ Sending request to OpenRouter...");
 
@@ -155,7 +150,6 @@ For Tunisia: include medinas, archaeological sites, desert experiences, coastal 
     } catch (parseError) {
       console.error("❌ Failed to parse JSON. Raw content:", content);
       
-      // ✅ CORRECTION: Gestion sécurisée de l'erreur unknown
       let errorMessage = "Unknown parsing error";
       if (parseError instanceof Error) {
         errorMessage = parseError.message;
@@ -177,54 +171,50 @@ For Tunisia: include medinas, archaeological sites, desert experiences, coastal 
     throw error;
   }
 }
-// ─── 3. Cultural Heritage Recognition ──────────────────────────
-export async function getSustainabilityInsights(params: {
-  name: string;
-  country: string;
-  month: string;
-  visitor_count?: number;
-  lat?: string | number;  // Ajouté
-  lon?: string | number;  // Ajouté
+
+// ─── 3. Cultural Heritage Recognition ─────────────────────────────────────
+export async function recognizeHeritage(input: {
+  type: "description" | "image_url";
+  value: string;
+  country_hint?: string;
 }) {
   try {
-    console.log("🌱 getSustainabilityInsights called with:", params);
-    
-    // Vous pouvez maintenant utiliser params.lat et params.lon dans votre prompt
-    const locationInfo = params.lat && params.lon 
-      ? ` at coordinates (${params.lat}, ${params.lon})` 
-      : '';
-    
-    const prompt = `Provide sustainability and crowd management insights for "${params.name}", ${params.country}${locationInfo} in ${params.month}.
-${params.visitor_count ? `Current monthly visitors: ${params.visitor_count}` : ""}
+    console.log("🏛️ recognizeHeritage called with:", { type: input.type, country_hint: input.country_hint });
+
+    const prompt = input.type === "description"
+      ? `A traveller describes this heritage site or landmark: "${input.value}"
+${input.country_hint ? `It may be in: ${input.country_hint}` : ""}
+
+Identify the site and provide rich cultural context.`
+      : `Analyze this heritage site image from ${input.country_hint || "the world"}.
+Image URL: ${input.value}
+Identify and describe the cultural heritage site shown.`;
+
+    const fullPrompt = `${prompt}
 
 Return ONLY valid JSON. Do not include any other text, markdown, or explanations.
 
 The JSON must follow this exact structure:
 {
-  "crowd_forecast": "low|moderate|high",
-  "crowd_score": 65,
-  "best_visit_times": ["Early morning (7-9am)", "Late afternoon (4-6pm)"],
-  "eco_score": 72,
-  "carbon_estimate_kg": 12.5,
-  "water_stress": "low|moderate|high",
-  "sustainability_rating": "A|B|C|D",
-  "green_practices": ["Use public transport", "Support local businesses"],
-  "responsible_tips": ["Bring reusable water bottle", "Respect local customs"],
-  "avoid_periods": ["Peak tourist season (Jul-Aug)", "Weekend afternoons"],
-  "local_initiatives": ["Beach cleanup program", "Local conservation project"],
-  "alternative_destinations": ["Nearby less-visited site 1", "Nearby less-visited site 2"],
-  "carrying_capacity_alert": false,
-  "monthly_trend": [
-    {"month": "Jan", "visitors": 1200, "eco_score": 85},
-    {"month": "Feb", "visitors": 1100, "eco_score": 87}
-  ]
-},
+  "site_name": "Name of the site",
+  "confidence": 85,
+  "country": "Country name",
+  "city": "City name",
+  "period": "Historical period",
+  "civilization": "Civilization name",
+  "description": "Detailed description",
+  "historical_context": "Historical context information",
+  "fun_facts": ["Fun fact 1", "Fun fact 2", "Fun fact 3"],
+  "visitor_tips": "Tips for visitors",
+  "nearby_sites": ["Nearby site 1", "Nearby site 2", "Nearby site 3"],
+  "best_time_to_visit": "Best time information",
+  "unesco": true,
+  "significance": "Cultural significance"
+}`;
 
-
-    // FIXED: Use the appropriate model based on input type
     const modelToUse = input.type === "image_url" 
-      ? "anthropic/claude-3-haiku" // For images
-      : MODEL_FAST; // For text descriptions - using the working fast model
+      ? "anthropic/claude-3-haiku"
+      : MODEL_FAST;
 
     console.log(`🏛️ Using model: ${modelToUse}`);
 
@@ -250,7 +240,6 @@ The JSON must follow this exact structure:
 
     console.log("🏛️ Raw response preview:", content.substring(0, 200) + "...");
 
-    // Clean and parse JSON
     let jsonContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
     if (jsonMatch) jsonContent = jsonMatch[0];
@@ -271,11 +260,18 @@ export async function getSustainabilityInsights(destination: {
   country: string;
   month: string;
   visitor_count?: number;
+  lat?: string | number;  // Added for worldwide support
+  lon?: string | number;  // Added for worldwide support
 }) {
   try {
     console.log("🌱 getSustainabilityInsights called with:", destination);
 
-    const prompt = `Provide sustainability and crowd management insights for "${destination.name}", ${destination.country} in ${destination.month}.
+    // Build location context
+    const locationContext = destination.lat && destination.lon 
+      ? ` at coordinates (${destination.lat}, ${destination.lon})` 
+      : '';
+
+    const prompt = `Provide sustainability and crowd management insights for "${destination.name}"${locationContext} in ${destination.country} during ${destination.month}.
 ${destination.visitor_count ? `Current monthly visitors: ${destination.visitor_count}` : ""}
 
 Return ONLY valid JSON. Do not include any other text, markdown, or explanations.
@@ -311,17 +307,17 @@ The JSON must follow this exact structure:
   ]
 }
 
-Base your response on typical Mediterranean/North African tourism patterns.
-For ${destination.name} in ${destination.country}, consider:
-- Peak tourist seasons (spring and autumn for cultural sites, summer for coastal)
+Base your response on typical tourism patterns for this destination. Consider:
+- Peak tourist seasons
 - Local climate and environmental pressures
 - Typical visitor patterns
-- Local sustainability initiatives`;
+- Local sustainability initiatives
+- Geographic factors based on the location`;
 
     console.log("🌱 Sending request to OpenRouter with model:", MODEL_FAST);
 
     const res = await openrouter.chat.completions.create({
-      model: MODEL_FAST, // Using the working fast model
+      model: MODEL_FAST,
       messages: [{ role: "user", content: prompt }],
       max_tokens: 1500,
       temperature: 0.7,
@@ -334,14 +330,23 @@ For ${destination.name} in ${destination.country}, consider:
 
     console.log("🌱 Raw response preview:", content.substring(0, 200) + "...");
 
-    // Clean and parse JSON
     let jsonContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
     if (jsonMatch) jsonContent = jsonMatch[0];
 
     const parsed = JSON.parse(jsonContent);
     console.log("🌱 Successfully parsed JSON response");
-    return parsed;
+    
+    // Add location info to response
+    return {
+      ...parsed,
+      _location: {
+        name: destination.name,
+        country: destination.country,
+        lat: destination.lat,
+        lon: destination.lon
+      }
+    };
     
   } catch (error: any) {
     console.error("❌ getSustainabilityInsights error:", {
