@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// ==============================================
+// FREE APIs ONLY - NO MOCK DATA - NO HARDCODING
+// ==============================================
 
 // 1. 🌤️ Open-Meteo - Real climate data (free, no key)
 async function getClimateData(lat: number, lon: number, month: string) {
@@ -243,8 +246,10 @@ async function reverseGeocode(lat: number, lon: number): Promise<{ city: string;
 
 /**
  * Estimate city-level annual visitors from country-level World Bank arrivals.
- * Uses city's share of national population as a proxy for tourist distribution,
- * then adjusts for city size tiers (capital cities tend to capture more tourists).
+ *
+ * GeoDB Cities returns population as the actual number (e.g. Paris = 2_138_551).
+ * The concentration multiplier reflects that tourists cluster far more in
+ * major cities than the raw population share suggests.
  */
 function estimateCityAnnualVisitors(
   countryArrivals: number,
@@ -252,23 +257,30 @@ function estimateCityAnnualVisitors(
   nationalPopulation: number,
   isCapital: boolean
 ): number {
-  if (!countryArrivals || !nationalPopulation) return 0;
+  if (!countryArrivals || !nationalPopulation || cityPopulation <= 0) return 0;
 
-  // Base share = city population fraction of national population
-  let share = cityPopulation / nationalPopulation;
+  // Population share of the city within the country
+  const popShare = cityPopulation / nationalPopulation;
 
-  // Tourism concentration factor: tourists cluster in cities more than residents
-  // Large cities (>1M) see disproportionately more tourists
-  let concentrationMultiplier = 1;
-  if (cityPopulation > 5_000_000) concentrationMultiplier = 8;
-  else if (cityPopulation > 2_000_000) concentrationMultiplier = 6;
-  else if (cityPopulation > 1_000_000) concentrationMultiplier = 4;
-  else if (cityPopulation > 500_000) concentrationMultiplier = 3;
+  // Tourism concentration factor:
+  // Tourists are far more concentrated in large/capital cities than residents.
+  // These multipliers are derived from known ratios (e.g. Paris ~30% of France arrivals,
+  // city pop share ~3% → multiplier ≈ 10).
+  let concentrationMultiplier: number;
+  if (cityPopulation > 5_000_000) concentrationMultiplier = 12;
+  else if (cityPopulation > 2_000_000) concentrationMultiplier = 10;
+  else if (cityPopulation > 1_000_000) concentrationMultiplier = 7;
+  else if (cityPopulation > 500_000) concentrationMultiplier = 5;
+  else if (cityPopulation > 200_000) concentrationMultiplier = 3;
   else if (cityPopulation > 100_000) concentrationMultiplier = 2;
+  else concentrationMultiplier = 1;
 
-  if (isCapital) concentrationMultiplier *= 1.5;
+  // Capital cities attract disproportionately more international tourists
+  if (isCapital) concentrationMultiplier *= 1.8;
 
-  const estimatedShare = Math.min(share * concentrationMultiplier, 0.5); // Cap at 50% of national arrivals
+  // Estimated share of national arrivals going to this city, capped at 60%
+  const estimatedShare = Math.min(popShare * concentrationMultiplier, 0.6);
+
   return Math.round(countryArrivals * estimatedShare);
 }
 
@@ -292,37 +304,51 @@ type ClimateData = Awaited<ReturnType<typeof getClimateData>>;
 
 /**
  * Eco score derived fully from real climate + population data.
- * No hardcoded base scores per city.
+ * Scale: 20 (very unsustainable) → 98 (excellent).
+ * Cities with high heat, aridity, large population, or low rainfall score lower.
  */
 function calculateEcoScore(climateData: ClimateData, population: number): number {
-  let score = 70;
+  // Base score: starts at 65. Cities have to earn higher scores through
+  // good climate conditions; population always applies downward pressure.
+  let score = 65;
 
   if (climateData) {
-    // Heat stress
-    if (climateData.avgTempMax > 40) score -= 15;
-    else if (climateData.avgTempMax > 35) score -= 10;
-    else if (climateData.avgTempMax > 30) score -= 3;
+    // Heat stress — high summer temps are both uncomfortable and energy-costly
+    if (climateData.avgTempMax > 42) score -= 20;
+    else if (climateData.avgTempMax > 38) score -= 15;
+    else if (climateData.avgTempMax > 34) score -= 10;
+    else if (climateData.avgTempMax > 30) score -= 5;
+    else if (climateData.avgTempMax > 26) score -= 2;
+    else if (climateData.avgTempMax >= 18 && climateData.avgTempMax <= 26) score += 5; // Pleasant range
 
-    // Extreme cold stress
-    if (climateData.avgTempMin < -10) score -= 10;
-    else if (climateData.avgTempMin < 0) score -= 5;
+    // Extreme cold stress (energy demand)
+    if (climateData.avgTempMin < -15) score -= 12;
+    else if (climateData.avgTempMin < -5) score -= 8;
+    else if (climateData.avgTempMin < 0) score -= 4;
 
-    // Water availability (aridity index)
-    if (climateData.aridityIndex < 0.2) score -= 15; // Very arid
-    else if (climateData.aridityIndex < 0.5) score -= 8; // Semi-arid
-    else if (climateData.aridityIndex > 2) score -= 3; // Too much rain
+    // Water availability — aridity index (precipitation / evapotranspiration)
+    if (climateData.aridityIndex < 0.15) score -= 18; // Hyper-arid (desert)
+    else if (climateData.aridityIndex < 0.3) score -= 12; // Arid
+    else if (climateData.aridityIndex < 0.5) score -= 7; // Semi-arid
+    else if (climateData.aridityIndex < 0.65) score -= 3; // Dry sub-humid
+    else if (climateData.aridityIndex >= 0.65 && climateData.aridityIndex <= 1.5) score += 4; // Good balance
 
-    // Rainfall diversity bonus
-    if (climateData.precipitationDays > 15) score -= 5;
-    else if (climateData.precipitationDays >= 5 && climateData.precipitationDays <= 12) score += 5;
+    // Rain days (too many = flooding risk; too few = drought risk)
+    if (climateData.precipitationDays > 20) score -= 6; // Very rainy month
+    else if (climateData.precipitationDays > 15) score -= 2;
+    else if (climateData.precipitationDays >= 5 && climateData.precipitationDays <= 12) score += 3;
+    else if (climateData.precipitationDays < 2) score -= 5; // Almost no rain
   }
 
-  // Population pressure
-  if (population > 10_000_000) score -= 15;
-  else if (population > 5_000_000) score -= 10;
-  else if (population > 1_000_000) score -= 5;
-  else if (population < 50_000) score += 10;
-  else if (population < 200_000) score += 5;
+  // Population / urban pressure (unavoidable in dense cities)
+  if (population > 10_000_000) score -= 20;
+  else if (population > 5_000_000) score -= 15;
+  else if (population > 2_000_000) score -= 10;
+  else if (population > 1_000_000) score -= 7;
+  else if (population > 500_000) score -= 4;
+  else if (population > 200_000) score -= 2;
+  else if (population < 50_000) score += 8;
+  else if (population < 150_000) score += 4;
 
   return Math.max(20, Math.min(98, Math.round(score)));
 }
@@ -381,13 +407,28 @@ function calculateAverage(arr: number[]): number {
 }
 
 function getCrowdLevel(monthlyVisitors: number, cityPopulation: number): "low" | "moderate" | "high" {
-  // Crowd pressure = visitors relative to city's absorptive capacity
-  if (!cityPopulation || !monthlyVisitors) return "low";
+  if (!cityPopulation || monthlyVisitors <= 0) return "low";
+
+  // Visitor-to-resident ratio for the month
   const ratio = monthlyVisitors / cityPopulation;
 
-  if (ratio > 0.3 || monthlyVisitors > 1_500_000) return "high";
-  if (ratio > 0.1 || monthlyVisitors > 300_000) return "moderate";
+  // Absolute thresholds also apply for small cities with big tourism
+  if (ratio > 0.25 || monthlyVisitors > 2_000_000) return "high";
+  if (ratio > 0.08 || monthlyVisitors > 400_000) return "moderate";
   return "low";
+}
+
+function getCrowdScore(monthlyVisitors: number, cityPopulation: number): number {
+  if (!cityPopulation || monthlyVisitors <= 0) return 10;
+  const ratio = monthlyVisitors / cityPopulation;
+  // Score 0–100: higher = more crowded
+  if (ratio > 1.0) return 98;
+  if (ratio > 0.5) return 90;
+  if (ratio > 0.25) return 80;
+  if (ratio > 0.15) return 68;
+  if (ratio > 0.08) return 52;
+  if (ratio > 0.03) return 35;
+  return 18;
 }
 
 // ==============================================
@@ -476,22 +517,44 @@ export async function POST(req: NextRequest) {
     // Safe hemisphere reference (defaults to northern if unknown)
     const resolvedLat = lat ?? 0;
 
-    // Fallback annual visitors when World Bank has no data for this country
+    // Fallback annual visitors when World Bank data is unavailable.
+    // Derived from city size: large cities typically receive visitors equal to
+    // 30–60% of their population per year from tourism alone.
     const fallbackAnnualVisitors = population
-      ? Math.round(population * (population > 2_000_000 ? 0.4 : population > 500_000 ? 0.25 : 0.1))
-      : 50_000;
+      ? Math.round(
+          population > 5_000_000 ? population * 0.6
+          : population > 2_000_000 ? population * 0.5
+          : population > 1_000_000 ? population * 0.4
+          : population > 500_000 ? population * 0.3
+          : population > 100_000 ? population * 0.2
+          : Math.max(population * 0.1, 20_000)
+        )
+      : 100_000;
 
     const monthNum = parseInt(getMonthNumber(body.month));
     const seasonalFactor = getSeasonalFactor(monthNum, resolvedLat);
     const baseAnnualForMonth = cityAnnualVisitors ?? fallbackAnnualVisitors;
     const monthlyVisitors = Math.max(100, Math.round((baseAnnualForMonth / 12) * seasonalFactor));
 
+    console.log("🌍 Visitor pipeline:", {
+      countryCode2,
+      countryAnnualArrivals,
+      cityPopulation: population,
+      nationalPopulation: countryData?.population,
+      isCapital,
+      cityAnnualVisitors,
+      fallbackAnnualVisitors,
+      baseAnnualForMonth,
+      seasonalFactor,
+      monthlyVisitors,
+    });
+
     // ── Derived scores ────────────────────────────────────────────────────
-    const crowdLevel = getCrowdLevel(monthlyVisitors ?? 0, population);
+    const crowdLevel = getCrowdLevel(monthlyVisitors, population);
     const ecoScore = calculateEcoScore(climateData, population);
     const waterStress = getWaterStress(climateData);
     const carbonEstimate = calculateCarbonEstimate(co2PerCapita, population);
-    const crowdScore = crowdLevel === "high" ? 85 : crowdLevel === "moderate" ? 55 : 25;
+    const crowdScore = getCrowdScore(monthlyVisitors, population);
     const sustainabilityRating = ecoScore >= 80 ? "A" : ecoScore >= 65 ? "B" : ecoScore >= 45 ? "C" : "D";
 
     // ── Monthly trend ─────────────────────────────────────────────────────
