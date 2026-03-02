@@ -8,10 +8,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log("🌍 Request body:", body);
 
-    // Validate input
-    if (!body.name || !body.country || !body.month) {
+    // Validate input - name is now optional if lat/lon provided
+    if (!body.month) {
       return NextResponse.json(
-        { error: "Missing required fields: name, country, and month are required" },
+        { error: "Missing required field: month is required" },
         { status: 400 }
       );
     }
@@ -25,6 +25,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check if we have either (name and country) or (lat and lon)
+    if (!body.name && !body.country && (!body.lat || !body.lon)) {
+      return NextResponse.json(
+        { error: "Missing location information. Provide either (name and country) or (lat and lon)" },
+        { status: 400 }
+      );
+    }
+
+    // If lat/lon provided but no name/country, reverse geocode to get location name
+    let locationName = body.name;
+    let locationCountry = body.country;
+
+    if (body.lat && body.lon && (!body.name || !body.country)) {
+      try {
+        // Reverse geocoding using OpenStreetMap Nominatim API
+        const geoResponse = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${body.lat}&lon=${body.lon}&zoom=18&addressdetails=1`,
+          {
+            headers: {
+              'User-Agent': 'Rihla-Tourism-App/1.0'
+            }
+          }
+        );
+        
+        if (geoResponse.ok) {
+          const geoData = await geoResponse.json();
+          const address = geoData.address || {};
+          
+          // Extract city/town/village name
+          locationName = address.city || address.town || address.village || address.suburb || geoData.display_name?.split(',')[0] || body.name || "Unknown location";
+          
+          // Extract country
+          locationCountry = address.country || body.country || "Unknown";
+          
+          console.log("🌍 Reverse geocoded:", { locationName, locationCountry });
+        }
+      } catch (geoError) {
+        console.error("🌍 Reverse geocoding error:", geoError);
+        // Continue with provided values or defaults
+        locationName = body.name || "Unknown location";
+        locationCountry = body.country || "Unknown";
+      }
+    }
+
     // Check API key
     if (!process.env.OPENROUTER_API_KEY) {
       console.error("🌍 OPENROUTER_API_KEY is not set");
@@ -34,17 +78,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Call OpenRouter
-    console.log("🌍 Calling getSustainabilityInsights...");
-    const result = await getSustainabilityInsights({
-      name: body.name,
-      country: body.country,
+    // Call OpenRouter with enhanced location info
+    console.log("🌍 Calling getSustainabilityInsights with:", {
+      name: locationName,
+      country: locationCountry,
       month: body.month,
-      visitor_count: body.visitor_count
+      hasCoordinates: !!(body.lat && body.lon)
+    });
+
+    const result = await getSustainabilityInsights({
+      name: locationName,
+      country: locationCountry,
+      month: body.month,
+      visitor_count: body.visitor_count,
+      lat: body.lat,
+      lon: body.lon
     });
 
     console.log("🌍 Sustainability insights generated successfully");
-    return NextResponse.json(result);
+    
+    // Add location info to response
+    return NextResponse.json({
+      ...result,
+      location: {
+        name: locationName,
+        country: locationCountry,
+        lat: body.lat,
+        lon: body.lon
+      }
+    });
 
   } catch (error: any) {
     console.error("🌍 Sustainability API Error:", {
