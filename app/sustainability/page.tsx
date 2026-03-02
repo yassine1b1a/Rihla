@@ -1,9 +1,13 @@
 "use client";
+
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { Leaf, BarChart3, Users, Droplets, Wind, TreePine, AlertTriangle, CheckCircle, RefreshCw, TrendingDown, Globe } from "lucide-react";
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { DESTINATIONS } from "@/lib/data/destinations";
+import { useState, useEffect } from "react";
+import { 
+  Leaf, BarChart3, Users, Droplets, Wind, TreePine, 
+  AlertTriangle, CheckCircle, RefreshCw, TrendingDown, 
+  Globe, MapPin, Search, X 
+} from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Navbar } from "@/components/layout/Navbar";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -47,21 +51,105 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+// Interface for location search results
+interface LocationSuggestion {
+  display_name: string;
+  lat: string;
+  lon: string;
+  name?: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    country?: string;
+  };
+}
+
 export default function SustainabilityPage() {
-  const [dest, setDest]       = useState(DESTINATIONS[0]);
-  const [month, setMonth]     = useState("Jun");
+  const [location, setLocation] = useState<LocationSuggestion | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [month, setMonth] = useState("Jun");
   const [loading, setLoading] = useState(false);
-  const [data, setData]       = useState<any>(null);
-  const [error, setError]     = useState("");
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState("");
+
+  // Debounce search to avoid too many API calls
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      searchLocations(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  // Search locations using OpenStreetMap Nominatim API
+  const searchLocations = async (query: string) => {
+    setSearchLoading(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+      );
+      const data = await response.json();
+      setSuggestions(data);
+      setShowSuggestions(true);
+    } catch (error) {
+      console.error("Error searching locations:", error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const selectLocation = (suggestion: LocationSuggestion) => {
+    setLocation(suggestion);
+    setSearchQuery(suggestion.display_name);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    // Clear previous results when location changes
+    setData(null);
+  };
+
+  const clearLocation = () => {
+    setLocation(null);
+    setSearchQuery("");
+    setData(null);
+  };
 
   const getInsights = async () => {
-    setLoading(true); setError(""); setData(null);
+    if (!location) {
+      setError("Please select a location first");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setData(null);
+
     try {
+      // Extract city and country from address
+      const address = location.address || {};
+      const city = address.city || address.town || address.village || location.name || location.display_name.split(',')[0];
+      const country = address.country || "Unknown";
+
       const res = await fetch("/api/ai/sustainability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: dest.name, country: dest.country, month }),
+        body: JSON.stringify({ 
+          name: city, 
+          country: country,
+          month,
+          lat: location.lat,
+          lon: location.lon
+        }),
       });
+      
       const d = await res.json();
       if (!res.ok) throw new Error(d.error);
       setData(d);
@@ -70,6 +158,16 @@ export default function SustainabilityPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Get display name for the selected location
+  const getLocationDisplay = () => {
+    if (!location) return "";
+    const address = location.address || {};
+    const city = address.city || address.town || address.village || location.name;
+    const country = address.country;
+    if (city && country) return `${city}, ${country}`;
+    return location.display_name.split(',').slice(0, 2).join(',');
   };
 
   return (
@@ -81,46 +179,128 @@ export default function SustainabilityPage() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 pt-24 pb-16">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
-          <p className="text-xs font-mono text-teal-light uppercase tracking-widest mb-2">{"Eco Dashboard"}</p>
+          <p className="text-xs font-mono text-teal-light uppercase tracking-widest mb-2">Eco Dashboard</p>
           <h1 className="font-display text-5xl md:text-6xl text-foreground mb-3">
-            {"Travel responsibly with real-time insights"} <span className="text-teal-gradient">{"Eco Score"}</span>
+            Travel responsibly with{" "}
+            <span className="text-teal-gradient">real-time insights</span>
           </h1>
           <p className="text-stone-mist text-lg max-w-2xl">
-            {"Recommendations"}
+            Get AI-powered sustainability data for any city in the world. 
+            Search for your destination below.
           </p>
         </motion.div>
 
-        {/* Control panel */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="p-5 rounded-2xl mb-8 flex flex-wrap gap-4 items-end"
-          style={{ background: "rgba(28,35,48,0.8)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div className="flex-1 min-w-48">
-            <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">{"Select Destination"}</label>
-            <select value={dest.id} onChange={e => setDest(DESTINATIONS.find(d => d.id === e.target.value) || DESTINATIONS[0])}
-              className="w-full input-rihla px-4 py-2.5 rounded-xl text-sm">
-              {DESTINATIONS.map(d => <option key={d.id} value={d.id}>{d.name} — {d.country}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">{"Select Month"}</label>
-            <div className="flex flex-wrap gap-1">
-              {MONTHS.map(m => (
-                <button key={m} onClick={() => setMonth(m)}
-                  className="px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all"
-                  style={{
-                    background: month === m ? "rgba(26,122,110,0.2)" : "rgba(28,35,48,0.6)",
-                    border: `1px solid ${month === m ? "rgba(26,122,110,0.4)" : "rgba(255,255,255,0.05)"}`,
-                    color: month === m ? "#2BA899" : "#7A6E62",
-                  }}>{m}</button>
-              ))}
+        {/* Search and Control panel */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.1 }}
+          className="p-5 rounded-2xl mb-8"
+          style={{ background: "rgba(28,35,48,0.8)", border: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="flex flex-wrap gap-4 items-end">
+            {/* Location Search */}
+            <div className="flex-1 min-w-64 relative">
+              <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block flex items-center gap-1">
+                <Globe className="w-3 h-3" /> Destination
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder="Search for any city in the world..."
+                  className="w-full input-rihla pl-10 pr-10 py-2.5 rounded-xl text-sm"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-mist" />
+                {location && (
+                  <button
+                    onClick={clearLocation}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-mist hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Location suggestions */}
+              {showSuggestions && suggestions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute z-20 mt-1 w-full rounded-xl overflow-hidden max-h-60 overflow-y-auto"
+                  style={{ background: "#1C2330", border: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => selectLocation(suggestion)}
+                      className="w-full text-left px-4 py-2.5 text-sm text-stone-mist hover:text-foreground hover:bg-white/5 transition-colors flex items-start gap-2"
+                    >
+                      <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span className="line-clamp-2">{suggestion.display_name}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+
+              {searchLoading && (
+                <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-teal-light" />
+                </div>
+              )}
+
+              {/* Selected location display */}
+              {location && (
+                <div className="mt-2 flex items-center gap-1 text-xs text-teal-light">
+                  <MapPin className="w-3 h-3" />
+                  <span>{getLocationDisplay()}</span>
+                </div>
+              )}
             </div>
+
+            {/* Month selector */}
+            <div>
+              <label className="text-xs font-mono text-stone-mist uppercase tracking-widest mb-2 block">Month</label>
+              <div className="flex flex-wrap gap-1">
+                {MONTHS.map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setMonth(m)}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all"
+                    style={{
+                      background: month === m ? "rgba(26,122,110,0.2)" : "rgba(28,35,48,0.6)",
+                      border: `1px solid ${month === m ? "rgba(26,122,110,0.4)" : "rgba(255,255,255,0.05)"}`,
+                      color: month === m ? "#2BA899" : "#7A6E62",
+                    }}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Action button */}
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={getInsights}
+              disabled={loading || !location}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-heading font-semibold disabled:opacity-50"
+              style={{ 
+                background: "linear-gradient(135deg, #1A7A6E, #2BA899)", 
+                color: "white", 
+                whiteSpace: "nowrap" 
+              }}
+            >
+              {loading ? (
+                <><RefreshCw className="w-4 h-4 animate-spin" /> Analyzing...</>
+              ) : (
+                <><BarChart3 className="w-4 h-4" /> Get Eco Insights</>
+              )}
+            </motion.button>
           </div>
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={getInsights} disabled={loading}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-heading font-semibold disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg, #1A7A6E, #2BA899)", color: "white", whiteSpace: "nowrap" }}>
-            {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> {"Analyzing..."}</>
-                     : <><BarChart3 className="w-4 h-4" /> {"Get Eco Insights"}</>}
-          </motion.button>
         </motion.div>
 
         {error && (
@@ -129,57 +309,24 @@ export default function SustainabilityPage() {
           </div>
         )}
 
-        {/* Static overview cards (always visible) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {DESTINATIONS.slice(0, 4).map((d, i) => (
-            <motion.div key={d.id}
-              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-              onClick={() => setDest(d)}
-              className="p-4 rounded-2xl cursor-pointer transition-all"
-              style={{
-                background: dest.id === d.id ? "rgba(26,122,110,0.1)" : "rgba(28,35,48,0.6)",
-                border: `1px solid ${dest.id === d.id ? "rgba(26,122,110,0.3)" : "rgba(255,255,255,0.06)"}`,
-              }}>
-              <div className="font-heading font-semibold text-sm text-foreground mb-1 truncate">{d.name}</div>
-              <div className="text-xs text-stone-mist mb-3">{d.country}</div>
-              <div className="flex items-center justify-between">
-                <div className="text-center">
-                  <div className="font-mono text-lg font-bold" style={{ color: "#4ADE80" }}>{d.sustainability_score}</div>
-                  <div className="text-xs text-stone-mist">Eco</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm font-heading font-medium" style={{ color: CROWD_COLORS[d.crowd_level] }}>
-                    {d.crowd_level}
-                  </div>
-                  <div className="text-xs text-stone-mist">Crowd</div>
-                </div>
-                {d.unesco && (
-                  <span className="text-xs px-1.5 py-0.5 rounded font-mono"
-                    style={{ background: "rgba(232,201,138,0.15)", color: "#E8C98A" }}>UN</span>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
         {/* AI Results */}
         {data && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             {/* Score meters */}
             <div className="p-6 rounded-2xl" style={{ background: "rgba(28,35,48,0.8)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <h2 className="font-heading font-bold text-lg text-foreground mb-6">
-                {dest.name} · {month} Analysis
+                {getLocationDisplay()} · {month} Analysis
               </h2>
               <div className="flex flex-wrap justify-around gap-6">
-                <ScoreMeter value={data.eco_score}     label="Eco Score"     color="#4ADE80" />
-                <ScoreMeter value={data.crowd_score}   label="Crowd Load"    color={CROWD_COLORS[data.crowd_forecast]} />
+                <ScoreMeter value={data.eco_score} label="Eco Score" color="#4ADE80" />
+                <ScoreMeter value={data.crowd_score} label="Crowd Load" color={CROWD_COLORS[data.crowd_forecast]} />
                 <ScoreMeter value={Math.round((data.carbon_estimate_kg / 50) * 100)} label="Carbon Level" color="#E8C98A" />
               </div>
               <div className="grid grid-cols-3 gap-4 mt-6 pt-5 border-t border-white/5">
                 {[
                   { icon: Users, label: "Crowd Level",    value: data.crowd_forecast,    color: CROWD_COLORS[data.crowd_forecast] },
-                  { icon: Droplets, label: "Water Stress",  value: data.water_stress,      color: WATER_COLORS[data.water_stress] },
-                  { icon: Wind, label: "CO₂/Visitor",   value: `${data.carbon_estimate_kg} kg`, color: "#E8C98A" },
+                  { icon: Droplets, label: "Water Stress", value: data.water_stress,      color: WATER_COLORS[data.water_stress] },
+                  { icon: Wind, label: "CO₂/Visitor",     value: `${data.carbon_estimate_kg} kg`, color: "#E8C98A" },
                 ].map(({ icon: Icon, label, value, color }) => (
                   <div key={label} className="text-center p-3 rounded-xl" style={{ background: "#0F1419" }}>
                     <Icon className="w-4 h-4 mx-auto mb-1" style={{ color }} />
@@ -275,13 +422,14 @@ export default function SustainabilityPage() {
         )}
 
         {/* Empty state */}
-        {!data && !loading && (
+        {!data && !loading && !error && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
             className="text-center py-16">
             <TreePine className="w-16 h-16 text-teal-dark mx-auto mb-4" />
-            <h3 className="font-heading font-bold text-xl text-foreground mb-2">Select a destination and month</h3>
+            <h3 className="font-heading font-bold text-xl text-foreground mb-2">Search for a destination</h3>
             <p className="text-stone-mist text-sm max-w-md mx-auto">
-              Get AI-powered sustainability insights, crowd forecasts, and responsible travel recommendations.
+              Enter any city in the world to get AI-powered sustainability insights, 
+              crowd forecasts, and responsible travel recommendations.
             </p>
           </motion.div>
         )}
