@@ -21,6 +21,13 @@ function avg(arr: number[]): number {
 }
 
 /**
+ * Normalize string for comparison (remove diacritics, lowercase, trim)
+ */
+function norm(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+/**
  * Fetch with an absolute timeout. Returns null on any error / timeout.
  * This prevents any single slow API from hanging the whole request.
  */
@@ -646,9 +653,6 @@ export async function POST(req: NextRequest) {
 
     // ── Capital detection ─────────────────────────────────────────────────
     // Compare normalised strings; strip diacritics for robustness
-    function norm(s: string) {
-      return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-    }
     const capitalNorm = norm(countryData?.capital ?? "");
     const cityNorm    = norm(locName);
     const isCapital =
