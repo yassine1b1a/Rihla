@@ -49,6 +49,52 @@ async function fetchWithTimeout(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// OPENROUTER AI INTEGRATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface OpenRouterConfig {
+  apiKey: string;
+  model?: string;
+}
+
+async function generateAIContent(
+  prompt: string,
+  config: OpenRouterConfig,
+  systemMessage?: string
+): Promise<string | null> {
+  if (!config.apiKey) return null;
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://rihla-travel.com", // Replace with your domain
+        "X-Title": "Rihla Travel Sustainability API",
+      },
+      body: JSON.stringify({
+        model: config.model || "openai/gpt-3.5-turbo", // Default model
+        messages: [
+          ...(systemMessage ? [{ role: "system", content: systemMessage }] : []),
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+      }),
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch (error) {
+    console.error("OpenRouter API error:", error);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 1. GEOCODING  –  OpenStreetMap Nominatim  (free, no key, worldwide)
 //    Handles: Latin, Arabic, Chinese, Thai, Cyrillic, Hebrew, etc.
 //    Strategy: forward-geocode the name, then enrich via reverse-geocode.
@@ -587,7 +633,73 @@ function crowdScore(monthly: number, pop: number): number {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 9. MAIN ROUTE
+// 9. AI-ENHANCED RECOMMENDATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface AIEnhancedContent {
+  summary?: string;
+  personalizedTips?: string[];
+  culturalNotes?: string[];
+  hiddenGems?: string[];
+  sustainabilityInsights?: string;
+}
+
+async function generateAIRecommendations(
+  location: string,
+  month: string,
+  climateData: ClimateData | null,
+  crowdLevel: string,
+  ecoScore: number,
+  countryData: CountryData | null,
+  openRouterConfig: OpenRouterConfig
+): Promise<AIEnhancedContent | null> {
+  if (!openRouterConfig.apiKey) return null;
+
+  const climateDesc = climateData 
+    ? `Average max temp: ${climateData.avgTempMax}°C, min: ${climateData.avgTempMin}°C, precipitation: ${climateData.totalPrecipitation}mm, ${climateData.precipitationDays} rainy days`
+    : "Climate data unavailable";
+
+  const prompt = `Generate sustainable travel recommendations for ${location} in ${month}.
+
+Context:
+- Crowd level: ${crowdLevel}
+- Eco score: ${ecoScore}/100
+- Climate: ${climateDesc}
+- Country: ${countryData?.name || "Unknown"}
+- Region: ${countryData?.region || "Unknown"}
+
+Please provide:
+1. A brief summary of what makes this destination sustainable/challenging in this month (2-3 sentences)
+2. 3-4 personalized sustainability tips specific to this location and month
+3. 2-3 cultural notes about local sustainability practices
+4. 2-3 off-the-beaten-path alternatives nearby
+5. One key insight about the destination's sustainability challenges
+
+Format as JSON with keys: summary, personalizedTips (array), culturalNotes (array), hiddenGems (array), sustainabilityInsights (string)`;
+
+  const systemMessage = "You are a sustainable travel expert. Provide concise, accurate, and helpful recommendations. Return only valid JSON.";
+
+  try {
+    const response = await generateAIContent(prompt, openRouterConfig, systemMessage);
+    if (!response) return null;
+
+    // Parse the JSON response
+    const parsed = JSON.parse(response);
+    return {
+      summary: parsed.summary,
+      personalizedTips: parsed.personalizedTips || [],
+      culturalNotes: parsed.culturalNotes || [],
+      hiddenGems: parsed.hiddenGems || [],
+      sustainabilityInsights: parsed.sustainabilityInsights,
+    };
+  } catch (error) {
+    console.error("Failed to parse AI response:", error);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. MAIN ROUTE
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -606,6 +718,12 @@ export async function POST(req: NextRequest) {
         { error: "Provide at least: name, or country, or lat+lon" }, { status: 400 }
       );
     }
+
+    // ── OpenRouter Configuration ───────────────────────────────────────────
+    const openRouterConfig: OpenRouterConfig = {
+      apiKey: process.env.OPENROUTER_API_KEY || "",
+      model: process.env.OPENROUTER_MODEL || "openai/gpt-3.5-turbo",
+    };
 
     // ── Location resolution ───────────────────────────────────────────────
     let locName:    string = (body.name    ?? "").trim();
@@ -744,6 +862,17 @@ export async function POST(req: NextRequest) {
     const cScore      = crowdScore(monthlyVisitors, population);
     const susRating   = ecoScore >= 80 ? "A" : ecoScore >= 65 ? "B" : ecoScore >= 45 ? "C" : "D";
 
+    // ── AI-Enhanced Content (if OpenRouter key is available) ───────────────
+    const aiContent = await generateAIRecommendations(
+      locName,
+      body.month,
+      climateData,
+      cLevel,
+      ecoScore,
+      countryData,
+      openRouterConfig
+    );
+
     // ── Monthly trend ─────────────────────────────────────────────────────
     const monthlyTrend = VALID_MONTHS.map((m) => {
       const mn  = monthNum(m);
@@ -761,7 +890,7 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    // ── Visit time recommendations (climate-driven) ───────────────────────
+    // ── Visit time recommendations (climate-driven + AI-enhanced) ─────────
     const bestVisitTimes: string[] = [];
     if (climateData?.avgTempMax > 32) {
       bestVisitTimes.push("Early morning (6–10am)", "Late evening (5–8pm)");
@@ -773,6 +902,7 @@ export async function POST(req: NextRequest) {
 
     // ── Response ──────────────────────────────────────────────────────────
     return NextResponse.json({
+      // Core metrics
       crowd_forecast: cLevel,
       crowd_score: cScore,
       best_visit_times: bestVisitTimes.slice(0, 2),
@@ -780,18 +910,30 @@ export async function POST(req: NextRequest) {
       carbon_estimate_kg: carbon,
       water_stress: waterStress,
       sustainability_rating: susRating,
-      green_practices: [
+      
+      // AI-enhanced content (if available)
+      ...(aiContent && {
+        ai_summary: aiContent.summary,
+        ai_personalized_tips: aiContent.personalizedTips,
+        ai_cultural_notes: aiContent.culturalNotes,
+        ai_hidden_gems: aiContent.hiddenGems,
+        ai_sustainability_insights: aiContent.sustainabilityInsights,
+      }),
+      
+      // Default fallback content (used if AI is unavailable)
+      green_practices: aiContent?.personalizedTips?.length ? [] : [
         "Use public transportation",
         "Support local businesses",
         "Bring a reusable water bottle",
         "Choose eco-certified accommodations",
       ],
-      responsible_tips: [
+      responsible_tips: aiContent?.personalizedTips?.length ? [] : [
         "Respect local customs and traditions",
         "Stay on designated trails",
         "Avoid single-use plastics",
         "Book with certified local guides",
       ],
+      
       avoid_periods: cLevel === "high"
         ? ["Peak tourist season", "Weekend afternoons"]
         : ["Weekend afternoons"],
@@ -800,7 +942,9 @@ export async function POST(req: NextRequest) {
         "Local conservation efforts",
         "Sustainable development programs",
       ],
-      alternative_destinations: ["Nearby smaller towns", "Rural areas", "Neighboring regions"],
+      alternative_destinations: aiContent?.hiddenGems?.length ? aiContent.hiddenGems : [
+        "Nearby smaller towns", "Rural areas", "Neighboring regions"
+      ],
       carrying_capacity_alert: cLevel === "high",
       monthly_trend: monthlyTrend,
 
@@ -826,6 +970,7 @@ export async function POST(req: NextRequest) {
           co2:              co2PerCapita   !== null ? "World Bank EN.ATM.CO2E.PC" : null,
           geocoding:        "OpenStreetMap Nominatim",
           population:       popSource,
+          ai_enhanced:      !!aiContent ? "OpenRouter AI" : null,
         },
         tourism: {
           country_annual_arrivals:         countryArrivals,
