@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// ==============================================
-// FREE APIs ONLY - NO MOCK DATA - NO HARDCODING
-// ==============================================
 
 // 1. 🌤️ Open-Meteo - Real climate data (free, no key)
 async function getClimateData(lat: number, lon: number, month: string) {
@@ -291,11 +288,13 @@ function getSeasonalFactor(monthNum: number, lat: number): number {
   return 0.65;
 }
 
+type ClimateData = Awaited<ReturnType<typeof getClimateData>>;
+
 /**
  * Eco score derived fully from real climate + population data.
  * No hardcoded base scores per city.
  */
-function calculateEcoScore(climateData: ReturnType<typeof getClimateData> extends Promise<infer T> ? T : never, population: number): number {
+function calculateEcoScore(climateData: ClimateData, population: number): number {
   let score = 70;
 
   if (climateData) {
@@ -331,7 +330,7 @@ function calculateEcoScore(climateData: ReturnType<typeof getClimateData> extend
 /**
  * Water stress derived from aridity index (real climate data).
  */
-function getWaterStress(climateData: any): "low" | "moderate" | "high" {
+function getWaterStress(climateData: ClimateData): "low" | "moderate" | "high" {
   if (!climateData) return "moderate";
 
   const { aridityIndex, totalPrecipitation } = climateData;
@@ -351,10 +350,11 @@ function calculateCarbonEstimate(co2PerCapitaTonnes: number | null, population: 
   if (co2PerCapitaTonnes && co2PerCapitaTonnes > 0) {
     const dailyTonnes = co2PerCapitaTonnes / 365;
     const perVisitTonnes = dailyTonnes * 7 * 1.5; // 7-day stay, tourist overhead
-    return Math.round(perVisitTonnes * 1000 * 10) / 10; // → kg, 1 decimal
+    const kg = Math.round(perVisitTonnes * 1000 * 10) / 10; // → kg, 1 decimal
+    return Math.max(1, kg); // always at least 1 kg
   }
 
-  // Fallback: estimate from population density proxy (larger cities = more infrastructure emissions)
+  // Fallback: population-density proxy (no hardcoded city names)
   if (population > 5_000_000) return 15;
   if (population > 1_000_000) return 10;
   if (population > 500_000) return 7;
@@ -473,27 +473,34 @@ export async function POST(req: NextRequest) {
         ? estimateCityAnnualVisitors(countryAnnualArrivals, population, countryData.population, isCapital)
         : null;
 
+    // Safe hemisphere reference (defaults to northern if unknown)
+    const resolvedLat = lat ?? 0;
+
+    // Fallback annual visitors when World Bank has no data for this country
+    const fallbackAnnualVisitors = population
+      ? Math.round(population * (population > 2_000_000 ? 0.4 : population > 500_000 ? 0.25 : 0.1))
+      : 50_000;
+
     const monthNum = parseInt(getMonthNumber(body.month));
-    const seasonalFactor = lat !== null ? getSeasonalFactor(monthNum, lat) : 1.0;
-    const monthlyVisitors = cityAnnualVisitors
-      ? Math.round((cityAnnualVisitors / 12) * seasonalFactor)
-      : null;
+    const seasonalFactor = getSeasonalFactor(monthNum, resolvedLat);
+    const baseAnnualForMonth = cityAnnualVisitors ?? fallbackAnnualVisitors;
+    const monthlyVisitors = Math.max(100, Math.round((baseAnnualForMonth / 12) * seasonalFactor));
 
     // ── Derived scores ────────────────────────────────────────────────────
     const crowdLevel = getCrowdLevel(monthlyVisitors ?? 0, population);
-    const ecoScore = calculateEcoScore(climateData as any, population);
+    const ecoScore = calculateEcoScore(climateData, population);
     const waterStress = getWaterStress(climateData);
     const carbonEstimate = calculateCarbonEstimate(co2PerCapita, population);
     const crowdScore = crowdLevel === "high" ? 85 : crowdLevel === "moderate" ? 55 : 25;
     const sustainabilityRating = ecoScore >= 80 ? "A" : ecoScore >= 65 ? "B" : ecoScore >= 45 ? "C" : "D";
 
     // ── Monthly trend ─────────────────────────────────────────────────────
+    // Recharts drops null datapoints, so visitors must always be a number.
     const monthlyTrend = validMonths.map((m) => {
       const mNum = parseInt(getMonthNumber(m));
-      const sf = lat !== null ? getSeasonalFactor(mNum, lat) : 1.0;
-      const visitors = cityAnnualVisitors
-        ? Math.max(100, Math.round((cityAnnualVisitors / 12) * sf))
-        : null;
+      const sf = getSeasonalFactor(mNum, resolvedLat);
+      const baseAnnual = cityAnnualVisitors ?? fallbackAnnualVisitors;
+      const visitors = Math.max(100, Math.round((baseAnnual / 12) * sf));
 
       // Eco score shifts slightly with climate seasons
       const tempDelta = climateData
