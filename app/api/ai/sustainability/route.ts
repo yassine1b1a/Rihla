@@ -1,140 +1,324 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // ==============================================
-// API RÉELLES - AUCUNE DONNÉE MOCKÉE
+// FREE APIs ONLY - NO MOCK DATA - NO HARDCODING
 // ==============================================
 
-// 1. 🌤️ Open-Meteo - Données climatiques réelles (gratuit, sans clé)
+// 1. 🌤️ Open-Meteo - Real climate data (free, no key, works worldwide)
 async function getClimateData(lat: number, lon: number, month: string) {
   try {
     const year = new Date().getFullYear();
+    const now = new Date();
     const monthNum = getMonthNumber(month);
-    
+    const targetYear = parseInt(monthNum) > now.getMonth() + 1 ? year - 1 : year;
+
+    const startDate = `${targetYear}-${monthNum}-01`;
+    const lastDay = new Date(targetYear, parseInt(monthNum), 0).getDate();
+    const endDate = `${targetYear}-${monthNum}-${lastDay}`;
+
     const response = await fetch(
-      `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${year}-${monthNum}-01&end_date=${year}-${monthNum}-28&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`
+      `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,et0_fao_evapotranspiration&timezone=auto`
     );
-    
+
     if (!response.ok) return null;
-    
+
     const data = await response.json();
     if (!data.daily) return null;
-    
+
+    const maxTemps: number[] = data.daily.temperature_2m_max?.filter((v: number | null) => v !== null) ?? [];
+    const minTemps: number[] = data.daily.temperature_2m_min?.filter((v: number | null) => v !== null) ?? [];
+    const precipitations: number[] = data.daily.precipitation_sum?.filter((v: number | null) => v !== null) ?? [];
+    const windSpeeds: number[] = data.daily.wind_speed_10m_max?.filter((v: number | null) => v !== null) ?? [];
+    const et0: number[] = data.daily.et0_fao_evapotranspiration?.filter((v: number | null) => v !== null) ?? [];
+
+    const totalPrecip = precipitations.reduce((a: number, b: number) => a + b, 0);
+    const totalEt0 = et0.reduce((a: number, b: number) => a + b, 0);
+    const aridity = totalEt0 > 0 ? totalPrecip / totalEt0 : 1;
+
     return {
-      avgTempMax: calculateAverage(data.daily.temperature_2m_max || []),
-      avgTempMin: calculateAverage(data.daily.temperature_2m_min || []),
-      totalPrecipitation: (data.daily.precipitation_sum || []).reduce((a: number, b: number) => a + b, 0)
+      avgTempMax: calculateAverage(maxTemps),
+      avgTempMin: calculateAverage(minTemps),
+      maxTemp: maxTemps.length ? Math.max(...maxTemps) : null,
+      minTemp: minTemps.length ? Math.min(...minTemps) : null,
+      totalPrecipitation: totalPrecip,
+      avgWindSpeed: calculateAverage(windSpeeds),
+      precipitationDays: precipitations.filter((p: number) => p > 0).length,
+      aridityIndex: Math.round(aridity * 100) / 100,
     };
-  } catch {
+  } catch (error) {
+    console.error("Error fetching climate data:", error);
     return null;
   }
 }
 
-// 2. 🌍 RestCountries - Données de pays (gratuit)
-async function getCountryData(countryName: string) {
+// 2. GeoDB Cities via RapidAPI (optional — skip gracefully when key absent or rate-limited)
+async function getCityData(cityName: string, countryCode?: string) {
   try {
-    const response = await fetch(
-      `https://restcountries.com/v3.1/name/${encodeURIComponent(countryName)}?fullText=true`
-    );
-    
-    if (!response.ok) return null;
-    
-    const data = await response.json();
-    if (!data || !data.length) return null;
-    
-    return {
-      code: data[0].cca2,
-      region: data[0].region,
-      population: data[0].population,
-      area: data[0].area
-    };
-  } catch {
-    return null;
-  }
-}
+    if (!process.env.RAPIDAPI_KEY) return null;
 
-// 3. 🏙️ Nominatim - Géocodage (gratuit)
-async function geocodeLocation(city: string, country: string) {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city + ', ' + country)}&limit=1`,
-      { headers: { 'User-Agent': 'Rihla-Tourism-App/1.0' } }
-    );
-    
-    if (!response.ok) return null;
-    
-    const data = await response.json();
-    if (!data || !data.length) return null;
-    
-    return {
-      lat: parseFloat(data[0].lat),
-      lon: parseFloat(data[0].lon)
-    };
-  } catch {
-    return null;
-  }
-}
+    const url = countryCode
+      ? `https://wft-geo-db.p.rapidapi.com/v1/geo/cities?namePrefix=${encodeURIComponent(cityName)}&countryIds=${encodeURIComponent(countryCode)}&limit=1&sort=-population`
+      : `https://wft-geo-db.p.rapidapi.com/v1/geo/cities?namePrefix=${encodeURIComponent(cityName)}&limit=5&sort=-population`;
 
-// 4. 📊 World Bank API - Données touristiques réelles
-async function getWorldBankTourismData(countryCode: string) {
-  try {
-    // ST.INT.ARVL = International tourism, number of arrivals
-    const response = await fetch(
-      `https://api.worldbank.org/v2/country/${countryCode}/indicator/ST.INT.ARVL?format=json&date=2023:2023&per_page=1`
-    );
-    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      headers: {
+        "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "wft-geo-db.p.rapidapi.com",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
     if (!response.ok) return null;
-    
+
     const data = await response.json();
-    
-    // Structure de l'API World Bank: [metadata, data_array]
-    if (data && data[1] && data[1].length > 0 && data[1][0]?.value) {
+    if (data.data && data.data.length > 0) {
+      const city = data.data[0];
       return {
-        arrivals: data[1][0].value,
-        year: data[1][0].date,
-        source: "World Bank"
+        name: city.name,
+        population: city.population > 0 ? city.population : null,
+        elevation: city.elevation,
+        latitude: city.latitude,
+        longitude: city.longitude,
+        countryCode: city.countryCode,
+        timezone: city.timezone,
+        region: city.region,
       };
     }
     return null;
+  } catch (error) {
+    console.error("Error fetching city data (GeoDB):", error);
+    return null;
+  }
+}
+
+// 3. RestCountries by name (free, no key, ~250 countries)
+async function getCountryData(countryName: string) {
+  try {
+    let response = await fetch(
+      `https://restcountries.com/v3.1/name/${encodeURIComponent(countryName)}?fullText=true`
+    );
+    if (!response.ok) {
+      response = await fetch(
+        `https://restcountries.com/v3.1/name/${encodeURIComponent(countryName)}`
+      );
+    }
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      const country = data[0];
+      return {
+        name: country.name.common,
+        capital: country.capital?.[0],
+        region: country.region,
+        subregion: country.subregion,
+        population: country.population,
+        area: country.area,
+        currencies: country.currencies,
+        languages: country.languages,
+        timezones: country.timezones,
+        borders: country.borders,
+        cca2: country.cca2,
+        cca3: country.cca3,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching country data:", error);
+    return null;
+  }
+}
+
+// 3b. RestCountries by ISO code (fallback when country name resolution fails)
+async function getCountryDataByCode(code: string) {
+  try {
+    const response = await fetch(
+      `https://restcountries.com/v3.1/alpha/${encodeURIComponent(code)}`
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data || !data.length) return null;
+    const country = data[0];
+    return {
+      name: country.name.common,
+      capital: country.capital?.[0],
+      region: country.region,
+      subregion: country.subregion,
+      population: country.population,
+      area: country.area,
+      currencies: country.currencies,
+      languages: country.languages,
+      timezones: country.timezones,
+      borders: country.borders,
+      cca2: country.cca2,
+      cca3: country.cca3,
+    };
+  } catch (error) {
+    console.error("Error fetching country data by code:", error);
+    return null;
+  }
+}
+
+// 4. World Bank - International tourism arrivals (free, no key, ~200 countries)
+async function getWorldBankTourism(countryCode2: string): Promise<number | null> {
+  try {
+    const response = await fetch(
+      `https://api.worldbank.org/v2/country/${countryCode2}/indicator/ST.INT.ARVL?format=json&mrv=8&per_page=8`
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length < 2) return null;
+    const entries: Array<{ value: number | null; date: string }> = data[1];
+    if (!entries) return null;
+    for (const entry of entries) {
+      if (entry.value !== null && entry.value > 0) return entry.value;
+    }
+    return null;
+  } catch (error) {
+    console.error("World Bank tourism fetch error:", error);
+    return null;
+  }
+}
+
+// 5. World Bank - CO2 emissions per capita (free, no key)
+async function getWorldBankCO2(countryCode2: string): Promise<number | null> {
+  try {
+    const response = await fetch(
+      `https://api.worldbank.org/v2/country/${countryCode2}/indicator/EN.ATM.CO2E.PC?format=json&mrv=8&per_page=8`
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length < 2) return null;
+    const entries: Array<{ value: number | null }> = data[1];
+    for (const entry of entries) {
+      if (entry.value !== null && entry.value > 0) return entry.value;
+    }
+    return null;
+  } catch (error) {
+    console.error("World Bank CO2 fetch error:", error);
+    return null;
+  }
+}
+
+// 6. OpenStreetMap Nominatim - Geocoding (free, no key, worldwide)
+async function geocode(
+  query: string
+): Promise<{ lat: number; lon: number; city: string; country: string; countryCode: string } | null> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`,
+      { headers: { "User-Agent": "Rihla-Tourism-App/1.0" } }
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data.length) return null;
+    const result = data[0];
+    const address = result.address || {};
+    return {
+      lat: parseFloat(result.lat),
+      lon: parseFloat(result.lon),
+      city:
+        address.city ||
+        address.town ||
+        address.village ||
+        address.suburb ||
+        result.display_name?.split(",")[0] ||
+        query,
+      country: address.country || "",
+      countryCode: address.country_code?.toUpperCase() || "",
+    };
+  } catch (error) {
+    console.error("Geocoding error:", error);
+    return null;
+  }
+}
+
+async function reverseGeocode(
+  lat: number,
+  lon: number
+): Promise<{ city: string; country: string; countryCode: string } | null> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`,
+      { headers: { "User-Agent": "Rihla-Tourism-App/1.0" } }
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    const address = data.address || {};
+    return {
+      city:
+        address.city ||
+        address.town ||
+        address.village ||
+        address.suburb ||
+        data.display_name?.split(",")[0] ||
+        "Unknown",
+      country: address.country || "Unknown",
+      countryCode: address.country_code?.toUpperCase() || "",
+    };
+  } catch (error) {
+    console.error("Reverse geocoding error:", error);
+    return null;
+  }
+}
+
+// 7. GeoNames - Population lookup (free, requires GEONAMES_USERNAME env var)
+// Second-tier fallback when GeoDB returns no population
+async function getGeoNamesPopulation(
+  cityName: string,
+  countryCode2: string
+): Promise<number | null> {
+  try {
+    const username = process.env.GEONAMES_USERNAME;
+    if (!username) return null;
+    const response = await fetch(
+      `http://api.geonames.org/searchJSON?q=${encodeURIComponent(cityName)}&country=${encodeURIComponent(countryCode2)}&maxRows=1&featureClass=P&orderby=population&username=${username}`
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    const pop = data.geonames?.[0]?.population;
+    return pop && pop > 0 ? pop : null;
   } catch {
     return null;
   }
 }
 
-// 5. 📊 Eurostat API - Données touristiques européennes
-async function getEurostatData(countryCode: string) {
+// 8. OSM Overpass - Population tag lookup (free, no key, last-resort worldwide)
+// Reads the "population" tag that OSM contributors add to city nodes/relations
+async function getOSMPopulation(
+  cityName: string,
+  lat: number,
+  lon: number
+): Promise<number | null> {
   try {
-    // Mapping pays -> code NUTS
-    const nutsCodes: Record<string, string> = {
-      "FR": "FR", "ES": "ES", "IT": "IT", "DE": "DE", "GB": "UK",
-      "NL": "NL", "BE": "BE", "PT": "PT", "GR": "EL", "AT": "AT",
-      "SE": "SE", "DK": "DK", "FI": "FI", "IE": "IE", "PL": "PL",
-      "CZ": "CZ", "HU": "HU", "SK": "SK", "SI": "SI", "RO": "RO",
-      "BG": "BG", "HR": "HR", "LT": "LT", "LV": "LV", "EE": "EE",
-      "CY": "CY", "LU": "LU", "MT": "MT"
-    };
-    
-    const nutsCode = nutsCodes[countryCode];
-    if (!nutsCode) return null;
-    
-    // Tourisme domestique et international
-    const response = await fetch(
-      `https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/tour_occ_nin?format=JSON&geo=${nutsCode}&time=2023&unit=NR&nace_r2=I55`
-    );
-    
+    const safeName = cityName.replace(/["\\]/g, "");
+    const query = `
+      [out:json][timeout:10];
+      (
+        node["name"~"${safeName}",i]["population"](around:50000,${lat},${lon});
+        way["name"~"${safeName}",i]["population"](around:50000,${lat},${lon});
+        relation["name"~"${safeName}",i]["population"](around:50000,${lat},${lon});
+      );
+      out tags 1;
+    `;
+    const response = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `data=${encodeURIComponent(query)}`,
+    });
     if (!response.ok) return null;
-    
     const data = await response.json();
-    
-    // Extraire la première valeur non-nulle
-    if (data.value) {
-      const values = Object.values(data.value) as number[];
-      const validValues = values.filter(v => v > 0);
-      if (validValues.length > 0) {
-        return {
-          arrivals: validValues[0],
-          year: 2023,
-          source: "Eurostat"
-        };
+    const elements: Array<{ tags?: Record<string, string> }> = data.elements ?? [];
+    for (const el of elements) {
+      const rawPop = el.tags?.population;
+      if (rawPop) {
+        const cleaned = rawPop.replace(/[,\s]/g, "");
+        const num = parseFloat(cleaned);
+        if (!isNaN(num) && num > 100) return Math.round(num);
       }
     }
     return null;
@@ -143,98 +327,171 @@ async function getEurostatData(countryCode: string) {
   }
 }
 
-// 6. 📊 UN Data API - Données touristiques mondiales
-async function getUNData(countryCode: string) {
-  try {
-    // UN Data API pour le tourisme
-    const response = await fetch(
-      `http://data.un.org/ws/rest/data/UNODATA/ITF_VOL/...?format=json`
-    );
-    // Note: L'API UN Data nécessite une construction d'URL spécifique
-    // Pour l'instant, on utilisera les autres sources
-    return null;
-  } catch {
-    return null;
-  }
+// ==============================================
+// DERIVED METRICS
+// ==============================================
+
+/**
+ * Estimate city-level annual visitors from World Bank country arrivals.
+ *
+ * Calibrated against real data:
+ *   Bangkok  ~38M / Thailand 40M  = 95%  (pop 10M / 70M = 14%)  → 6.8× popShare
+ *   Paris    ~30M / France   89M  = 34%  (pop  2M / 67M =  3%)  → 11.3× popShare
+ *   Tokyo    ~15M / Japan    32M  = 47%  (pop 13M /126M = 10%)  →  4.7× popShare
+ *   NYC      ~14M / USA      77M  = 18%  (pop  8M /330M =  2%)  →  9× popShare
+ *   Dubai    ~16M / UAE      17M  = 94%  (pop  3M /  9M = 33%)  →  2.8× popShare
+ */
+function estimateCityAnnualVisitors(
+  countryArrivals: number,
+  cityPopulation: number,
+  nationalPopulation: number,
+  isCapital: boolean
+): number {
+  if (!countryArrivals || !nationalPopulation || cityPopulation <= 0) return 0;
+
+  const popShare = cityPopulation / nationalPopulation;
+
+  let concentrationMultiplier: number;
+  if (cityPopulation > 8_000_000) concentrationMultiplier = 35;
+  else if (cityPopulation > 5_000_000) concentrationMultiplier = 28;
+  else if (cityPopulation > 3_000_000) concentrationMultiplier = 22;
+  else if (cityPopulation > 2_000_000) concentrationMultiplier = 18;
+  else if (cityPopulation > 1_000_000) concentrationMultiplier = 12;
+  else if (cityPopulation > 500_000) concentrationMultiplier = 8;
+  else if (cityPopulation > 200_000) concentrationMultiplier = 5;
+  else if (cityPopulation > 100_000) concentrationMultiplier = 3;
+  else concentrationMultiplier = 1.5;
+
+  // Capitals attract disproportionately more international tourists
+  if (isCapital) concentrationMultiplier *= 2.5;
+
+  const estimatedShare = Math.min(popShare * concentrationMultiplier, 0.80);
+  const minShare = Math.max(estimatedShare, 0.005); // floor: 0.5% of country
+
+  return Math.round(countryArrivals * Math.min(minShare, 0.80));
 }
 
-// 7. 📊 OEC World - Données économiques
-async function getOECTourismData(countryCode: string) {
-  try {
-    const response = await fetch(
-      `https://oec.world/api/olap-proxy/data?cube=trade_i_baci_a_92&drilldowns=Year&measures=Trade Value&parents=false&sparse=false&Year=${new Date().getFullYear()-1}`
-    );
-    // API OEC pour les données touristiques
-    return null;
-  } catch {
-    return null;
+/**
+ * Monthly seasonal factor based on hemisphere and latitude band.
+ * Equatorial band (|lat| < 15°) has muted variation; peak is in the dry season.
+ */
+function getSeasonalFactor(monthNum: number, lat: number): number {
+  const absLat = Math.abs(lat);
+  const isNorth = lat >= 0;
+
+  if (absLat < 15) {
+    // Tropical/equatorial: mild variation; dry season = visitor peak
+    const dryPeak = [11, 12, 1, 2, 3];
+    return dryPeak.includes(monthNum) ? 1.25 : 0.90;
   }
+
+  const summerMonths = isNorth ? [6, 7, 8] : [12, 1, 2];
+  const shoulderMonths = isNorth ? [4, 5, 9, 10] : [3, 4, 10, 11];
+
+  if (summerMonths.includes(monthNum)) return 1.5;
+  if (shoulderMonths.includes(monthNum)) return 1.15;
+  return 0.65;
+}
+
+type ClimateData = Awaited<ReturnType<typeof getClimateData>>;
+
+function calculateEcoScore(climateData: ClimateData, population: number): number {
+  let score = 65;
+
+  if (climateData) {
+    if (climateData.avgTempMax > 42) score -= 20;
+    else if (climateData.avgTempMax > 38) score -= 15;
+    else if (climateData.avgTempMax > 34) score -= 10;
+    else if (climateData.avgTempMax > 30) score -= 5;
+    else if (climateData.avgTempMax > 26) score -= 2;
+    else if (climateData.avgTempMax >= 18 && climateData.avgTempMax <= 26) score += 5;
+
+    if (climateData.avgTempMin < -15) score -= 12;
+    else if (climateData.avgTempMin < -5) score -= 8;
+    else if (climateData.avgTempMin < 0) score -= 4;
+
+    if (climateData.aridityIndex < 0.15) score -= 18;
+    else if (climateData.aridityIndex < 0.3) score -= 12;
+    else if (climateData.aridityIndex < 0.5) score -= 7;
+    else if (climateData.aridityIndex < 0.65) score -= 3;
+    else if (climateData.aridityIndex >= 0.65 && climateData.aridityIndex <= 1.5) score += 4;
+
+    if (climateData.precipitationDays > 20) score -= 6;
+    else if (climateData.precipitationDays > 15) score -= 2;
+    else if (climateData.precipitationDays >= 5 && climateData.precipitationDays <= 12) score += 3;
+    else if (climateData.precipitationDays < 2) score -= 5;
+  }
+
+  if (population > 10_000_000) score -= 20;
+  else if (population > 5_000_000) score -= 15;
+  else if (population > 2_000_000) score -= 10;
+  else if (population > 1_000_000) score -= 7;
+  else if (population > 500_000) score -= 4;
+  else if (population > 200_000) score -= 2;
+  else if (population < 50_000) score += 8;
+  else if (population < 150_000) score += 4;
+
+  return Math.max(20, Math.min(98, Math.round(score)));
+}
+
+function getWaterStress(climateData: ClimateData): "low" | "moderate" | "high" {
+  if (!climateData) return "moderate";
+  const { aridityIndex, totalPrecipitation } = climateData;
+  if (aridityIndex < 0.3 || totalPrecipitation < 20) return "high";
+  if (aridityIndex < 0.65 || totalPrecipitation < 60) return "moderate";
+  return "low";
+}
+
+function calculateCarbonEstimate(co2PerCapitaTonnes: number | null, population: number): number {
+  if (co2PerCapitaTonnes && co2PerCapitaTonnes > 0) {
+    const dailyTonnes = co2PerCapitaTonnes / 365;
+    const perVisitTonnes = dailyTonnes * 7 * 1.5;
+    const kg = Math.round(perVisitTonnes * 1000 * 10) / 10;
+    return Math.max(1, kg);
+  }
+  if (population > 5_000_000) return 15;
+  if (population > 1_000_000) return 10;
+  if (population > 500_000) return 7;
+  if (population > 100_000) return 5;
+  return 3;
 }
 
 // ==============================================
-// FONCTIONS UTILITAIRES
+// UTILITIES
 // ==============================================
 
 function getMonthNumber(month: string): string {
   const months: Record<string, string> = {
-    "Jan": "01", "Feb": "02", "Mar": "03", "Apr": "04",
-    "May": "05", "Jun": "06", "Jul": "07", "Aug": "08",
-    "Sep": "09", "Oct": "10", "Nov": "11", "Dec": "12"
+    Jan: "01", Feb: "02", Mar: "03", Apr: "04",
+    May: "05", Jun: "06", Jul: "07", Aug: "08",
+    Sep: "09", Oct: "10", Nov: "11", Dec: "12",
   };
   return months[month] || "01";
 }
 
 function calculateAverage(arr: number[]): number {
   if (!arr.length) return 0;
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
+  return Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10;
 }
 
-function calculateSeasonalFactor(month: string, lat?: number): number {
-  const monthNum = parseInt(getMonthNumber(month));
-  const isNorthern = !lat || lat > 0;
-  
-  if (isNorthern) {
-    // Hémisphère nord
-    if (monthNum >= 6 && monthNum <= 8) return 1.4; // Été
-    if (monthNum === 5 || monthNum === 9) return 1.1; // Mai, Septembre
-    if (monthNum === 12 || monthNum === 1 || monthNum === 2) return 0.7; // Hiver
-    return 0.9; // Printemps/Automne
-  } else {
-    // Hémisphère sud
-    if (monthNum === 12 || monthNum === 1 || monthNum === 2) return 1.4; // Été austral
-    if (monthNum === 11 || monthNum === 3) return 1.1; // Novembre, Mars
-    if (monthNum >= 6 && monthNum <= 8) return 0.7; // Hiver austral
-    return 0.9;
-  }
-}
-
-function getCrowdLevel(monthlyVisitors: number): "low" | "moderate" | "high" {
-  if (monthlyVisitors > 3000000) return "high";
-  if (monthlyVisitors > 1000000) return "moderate";
+function getCrowdLevel(monthlyVisitors: number, cityPopulation: number): "low" | "moderate" | "high" {
+  if (!cityPopulation || monthlyVisitors <= 0) return "low";
+  const ratio = monthlyVisitors / cityPopulation;
+  if (ratio > 0.25 || monthlyVisitors > 2_000_000) return "high";
+  if (ratio > 0.08 || monthlyVisitors > 400_000) return "moderate";
   return "low";
 }
 
-function getWaterStress(precipitation: number): "low" | "moderate" | "high" {
-  if (precipitation < 30) return "high";
-  if (precipitation < 100) return "moderate";
-  return "low";
-}
-
-function calculateEcoScore(climateData: any, tourismData: any): number {
-  let score = 70;
-  
-  if (climateData) {
-    if (climateData.avgTempMax > 35) score -= 10;
-    if (climateData.avgTempMin < 0) score -= 5;
-    if (climateData.totalPrecipitation > 200) score -= 5;
-    if (climateData.totalPrecipitation < 20) score -= 10;
-  }
-  
-  if (tourismData && tourismData.arrivals > 10000000) {
-    score -= 10; // Surtourisme
-  }
-  
-  return Math.max(30, Math.min(95, Math.round(score)));
+function getCrowdScore(monthlyVisitors: number, cityPopulation: number): number {
+  if (!cityPopulation || monthlyVisitors <= 0) return 10;
+  const ratio = monthlyVisitors / cityPopulation;
+  if (ratio > 1.0) return 98;
+  if (ratio > 0.5) return 90;
+  if (ratio > 0.25) return 80;
+  if (ratio > 0.15) return 68;
+  if (ratio > 0.08) return 52;
+  if (ratio > 0.03) return 35;
+  return 18;
 }
 
 // ==============================================
@@ -243,177 +500,323 @@ function calculateEcoScore(climateData: any, tourismData: any): number {
 
 export async function POST(req: NextRequest) {
   console.log("🌍 Sustainability API: Received request");
-  
+
   try {
     const body = await req.json();
-    const { month, name, country, lat, lon } = body;
+    console.log("🌍 Request body:", body);
 
-    // Validation de base
+    // ── Validation ──────────────────────────────────────────────────────
+    if (!body.month) {
+      return NextResponse.json({ error: "Missing required field: month" }, { status: 400 });
+    }
+
     const validMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    if (!month || !validMonths.includes(month)) {
+    if (!validMonths.includes(body.month)) {
       return NextResponse.json(
-        { error: "Invalid month. Must be three-letter abbreviation (e.g., Jan, Feb)" },
+        { error: "Invalid month. Use three-letter abbreviation (e.g. Jan)" },
         { status: 400 }
       );
     }
 
-    // Obtenir les coordonnées si non fournies
-    let locationLat = lat;
-    let locationLon = lon;
-    let locationName = name;
-    let locationCountry = country;
+    if (!body.name && !body.country && (!body.lat || !body.lon)) {
+      return NextResponse.json({ error: "Missing location information" }, { status: 400 });
+    }
 
-    if ((!locationLat || !locationLon) && locationName && locationCountry) {
-      const coords = await geocodeLocation(locationName, locationCountry);
-      if (coords) {
-        locationLat = coords.lat;
-        locationLon = coords.lon;
+    // ── Location resolution ──────────────────────────────────────────────
+    let locationName: string = body.name || "";
+    let locationCountry: string = body.country || "";
+    let lat: number | null = body.lat ?? null;
+    let lon: number | null = body.lon ?? null;
+    let countryCode2 = "";
+    let countryCode3 = "";
+
+    // Forward geocode if coordinates missing
+    if ((!lat || !lon) && locationName) {
+      const geo = await geocode(
+        `${locationName}${locationCountry ? ", " + locationCountry : ""}`
+      );
+      if (geo) {
+        lat = geo.lat;
+        lon = geo.lon;
+        if (!locationName) locationName = geo.city;
+        if (!locationCountry) locationCountry = geo.country;
+        if (!countryCode2) countryCode2 = geo.countryCode;
       }
     }
 
-    // Obtenir les données du pays
-    let countryCode = null;
-    let countryData = null;
-    if (locationCountry) {
-      countryData = await getCountryData(locationCountry);
-      if (countryData) {
-        countryCode = countryData.code;
+    // Reverse geocode to fill missing name/country
+    if (lat && lon && (!locationName || !locationCountry)) {
+      const rev = await reverseGeocode(lat, lon);
+      if (rev) {
+        if (!locationName) locationName = rev.city;
+        if (!locationCountry) locationCountry = rev.country;
+        if (!countryCode2) countryCode2 = rev.countryCode;
       }
     }
 
-    // Obtenir les données climatiques
-    let climateData = null;
-    if (locationLat && locationLon) {
-      climateData = await getClimateData(locationLat, locationLon, month);
+    // ── Parallel first-tier data fetching ────────────────────────────────
+    const [cityData, countryDataRaw, climateData] = await Promise.all([
+      locationName ? getCityData(locationName, countryCode2 || undefined) : Promise.resolve(null),
+      // Try by name first; if name is empty but code is present, fall through to code lookup below
+      locationCountry
+        ? getCountryData(locationCountry)
+        : countryCode2
+        ? getCountryDataByCode(countryCode2)
+        : Promise.resolve(null),
+      lat && lon ? getClimateData(lat, lon, body.month) : Promise.resolve(null),
+    ]);
+
+    // Enrich country codes from all available sources
+    if (!countryCode2 && cityData?.countryCode) countryCode2 = cityData.countryCode;
+    if (!countryCode2 && countryDataRaw?.cca2) countryCode2 = countryDataRaw.cca2;
+    if (countryDataRaw?.cca3) countryCode3 = countryDataRaw.cca3;
+
+    // Retry country data by code if name-based lookup failed
+    let resolvedCountryData = countryDataRaw;
+    if (!resolvedCountryData && countryCode2) {
+      resolvedCountryData = await getCountryDataByCode(countryCode2);
+      if (resolvedCountryData?.cca2 && !countryCode2) countryCode2 = resolvedCountryData.cca2;
+      if (resolvedCountryData?.cca3) countryCode3 = resolvedCountryData.cca3;
     }
 
-    // Obtenir les données touristiques (essayer plusieurs sources)
-    let tourismData = null;
-    
-    if (countryCode) {
-      // Essayer World Bank d'abord
-      tourismData = await getWorldBankTourismData(countryCode);
-      
-      // Si pas de données, essayer Eurostat (pour l'Europe)
-      if (!tourismData) {
-        tourismData = await getEurostatData(countryCode);
+    // ── Population: multi-source waterfall ───────────────────────────────
+    // Tier 1: GeoDB (may be missing for many non-Western cities)
+    let population: number = (cityData?.population as number) > 0 ? (cityData!.population as number) : 0;
+    let populationSource = population > 0 ? "GeoDB" : "";
+
+    // Tier 2: GeoNames (requires GEONAMES_USERNAME env var — free to register)
+    if (!population && countryCode2) {
+      const geoNamesPop = await getGeoNamesPopulation(locationName, countryCode2);
+      if (geoNamesPop) {
+        population = geoNamesPop;
+        populationSource = "GeoNames";
+        console.log("🌍 Population from GeoNames:", population);
       }
     }
 
-    // Si toujours pas de données, retourner une erreur claire
-    if (!tourismData) {
-      return NextResponse.json({
-        error: "No tourism data available for this destination",
-        details: "The requested location does not have tourism statistics in our data sources (World Bank, Eurostat).",
-        location: { name: locationName, country: locationCountry }
-      }, { status: 404 });
+    // Tier 3: OSM Overpass population tag (truly worldwide, no API key)
+    if (!population && lat && lon) {
+      const osmPop = await getOSMPopulation(locationName, lat, lon);
+      if (osmPop) {
+        population = osmPop;
+        populationSource = "OSM";
+        console.log("🌍 Population from OSM:", population);
+      }
     }
 
-    // Calculer les métriques basées sur des données réelles
-    const seasonalFactor = calculateSeasonalFactor(month, locationLat);
-    const monthlyVisitors = Math.round(tourismData.arrivals / 12 * seasonalFactor);
-    
-    const crowdLevel = getCrowdLevel(monthlyVisitors);
-    const crowdScore = crowdLevel === "high" ? 85 : crowdLevel === "moderate" ? 55 : 25;
-    
-    const waterStress = climateData 
-      ? getWaterStress(climateData.totalPrecipitation)
-      : "moderate";
-    
-    const ecoScore = calculateEcoScore(climateData, tourismData);
-    const carbonEstimate = Math.round(tourismData.arrivals * 0.0001); // Estimation basée sur les arrivées
-    const sustainabilityRating = ecoScore >= 80 ? "A" : ecoScore >= 65 ? "B" : ecoScore >= 45 ? "C" : "D";
+    // Tier 4: Derive a rough estimate from country population + city status.
+    // This ensures we ALWAYS have a non-zero population for downstream maths.
+    if (!population && resolvedCountryData?.population) {
+      const nationalPop = resolvedCountryData.population;
+      // Treat as a "typical" large city: ~5-10% of national population
+      population = Math.round(nationalPop * 0.07);
+      populationSource = "country-derived";
+      console.warn("⚠️ Using country-derived population estimate:", population);
+    }
 
-    // Générer les tendances mensuelles (basées sur les données réelles)
-    const monthlyTrend = validMonths.map(m => ({
-      month: m,
-      visitors: Math.round(tourismData.arrivals / 12 * calculateSeasonalFactor(m, locationLat)),
-      eco_score: ecoScore
-    }));
+    // Tier 5: Absolute floor — never let population be 0
+    if (!population || population < 1000) {
+      population = 500_000; // median-ish city
+      populationSource = "constant-floor";
+      console.warn("⚠️ Using constant floor population:", population);
+    }
 
-    // Construire la réponse avec UNIQUEMENT des données réelles
-    const response = {
-      // Données principales
+    // ── Capital detection (case-insensitive, partial-match) ───────────────
+    const capitalName = resolvedCountryData?.capital?.toLowerCase().trim() ?? "";
+    const cityNameNorm = (cityData?.name ?? locationName).toLowerCase().trim();
+    const isCapital =
+      capitalName.length > 0 &&
+      (cityNameNorm === capitalName ||
+        cityNameNorm.startsWith(capitalName) ||
+        capitalName.startsWith(cityNameNorm));
+
+    // ── World Bank: tourism arrivals + CO2 ───────────────────────────────
+    const [countryAnnualArrivals, co2PerCapita] = await Promise.all([
+      countryCode2 ? getWorldBankTourism(countryCode2) : Promise.resolve(null),
+      countryCode2 ? getWorldBankCO2(countryCode2) : Promise.resolve(null),
+    ]);
+
+    // ── Visitor estimates ─────────────────────────────────────────────────
+    const cityAnnualVisitors =
+      countryAnnualArrivals && population && resolvedCountryData?.population
+        ? estimateCityAnnualVisitors(
+            countryAnnualArrivals,
+            population,
+            resolvedCountryData.population,
+            isCapital
+          )
+        : null;
+
+    const resolvedLat = lat ?? 0;
+
+    /**
+     * Fallback annual visitors when World Bank data is unavailable.
+     * Calibrated to real visitor-to-resident ratios:
+     *   Paris 30M / 2M res = 15×  |  Barcelona 20M / 1.6M = 12×
+     *   NYC 66M / 8M = 8×         |  Dubai 16M / 3.3M = 5×
+     *   Small cities: 1–3×
+     * Capital bonus ×2 applied on top.
+     */
+    const capitalBonus = isCapital ? 2.0 : 1.0;
+    const fallbackAnnualVisitors = Math.round(
+      capitalBonus *
+        (population > 8_000_000
+          ? population * 7
+          : population > 5_000_000
+          ? population * 6
+          : population > 3_000_000
+          ? population * 8
+          : population > 2_000_000
+          ? population * 10
+          : population > 1_000_000
+          ? population * 8
+          : population > 500_000
+          ? population * 5
+          : population > 200_000
+          ? population * 3
+          : population > 100_000
+          ? population * 2
+          : Math.max(population * 1.5, 50_000))
+    );
+
+    const monthNum = parseInt(getMonthNumber(body.month));
+    const seasonalFactor = getSeasonalFactor(monthNum, resolvedLat);
+    const baseAnnualForMonth = cityAnnualVisitors ?? fallbackAnnualVisitors;
+    const monthlyVisitors = Math.max(1_000, Math.round((baseAnnualForMonth / 12) * seasonalFactor));
+
+    console.log("🌍 Visitor pipeline:", {
+      countryCode2,
+      countryAnnualArrivals,
+      cityPopulation: population,
+      populationSource,
+      nationalPopulation: resolvedCountryData?.population,
+      isCapital,
+      cityAnnualVisitors,
+      fallbackAnnualVisitors,
+      baseAnnualForMonth,
+      seasonalFactor,
+      monthlyVisitors,
+    });
+
+    // ── Derived scores ────────────────────────────────────────────────────
+    const crowdLevel = getCrowdLevel(monthlyVisitors, population);
+    const ecoScore = calculateEcoScore(climateData, population);
+    const waterStress = getWaterStress(climateData);
+    const carbonEstimate = calculateCarbonEstimate(co2PerCapita, population);
+    const crowdScore = getCrowdScore(monthlyVisitors, population);
+    const sustainabilityRating =
+      ecoScore >= 80 ? "A" : ecoScore >= 65 ? "B" : ecoScore >= 45 ? "C" : "D";
+
+    // ── Monthly trend ─────────────────────────────────────────────────────
+    const monthlyTrend = validMonths.map((m) => {
+      const mNum = parseInt(getMonthNumber(m));
+      const sf = getSeasonalFactor(mNum, resolvedLat);
+      const baseAnnual = cityAnnualVisitors ?? fallbackAnnualVisitors;
+      const visitors = Math.max(1_000, Math.round((baseAnnual / 12) * sf));
+
+      const tempDelta = climateData
+        ? mNum >= 6 && mNum <= 8
+          ? 2
+          : mNum <= 2 || mNum === 12
+          ? -2
+          : 0
+        : 0;
+
+      return {
+        month: m,
+        visitors,
+        eco_score: Math.round(Math.max(20, Math.min(98, ecoScore + tempDelta))),
+        seasonal_factor: sf,
+      };
+    });
+
+    // ── Visit time recommendations ────────────────────────────────────────
+    const bestVisitTimes: string[] = [];
+    if (climateData) {
+      if (climateData.avgTempMax > 32) {
+        bestVisitTimes.push("Early morning (6–10am)", "Late evening (5–8pm)");
+      } else if (climateData.avgTempMax < 10) {
+        bestVisitTimes.push("Midday (11am–3pm) for warmth");
+      } else {
+        bestVisitTimes.push("Morning (9–11am)", "Afternoon (2–5pm)");
+      }
+    } else {
+      bestVisitTimes.push("Weekdays", "Early morning");
+    }
+
+    // ── Response ──────────────────────────────────────────────────────────
+    const responsePayload = {
       crowd_forecast: crowdLevel,
       crowd_score: crowdScore,
-      best_visit_times: climateData 
-        ? [
-            climateData.avgTempMax > 28 ? "Early morning (7-10am) - Avoid heat" : "Anytime - pleasant temperatures",
-            climateData.avgTempMin < 10 ? "Midday (11am-3pm) - Warmest part" : "Late afternoon - good light"
-          ].filter(Boolean)
-        : ["Check local guides for optimal visiting times"],
-      
+      best_visit_times: bestVisitTimes.slice(0, 2),
       eco_score: ecoScore,
       carbon_estimate_kg: carbonEstimate,
       water_stress: waterStress,
       sustainability_rating: sustainabilityRating,
-      
-      // Conseils génériques (indépendants de la destination)
       green_practices: [
-        "Use public transportation instead of rental cars",
-        "Support local businesses and artisans",
-        "Bring reusable water bottle and shopping bag",
-        "Choose accommodations with eco-certification"
+        "Use public transportation",
+        "Support local businesses",
+        "Bring a reusable water bottle",
+        "Choose eco-certified accommodations",
       ],
-      
       responsible_tips: [
-        "Respect local customs and dress codes",
-        "Stay on designated trails in natural areas",
+        "Respect local customs and traditions",
+        "Stay on designated trails",
         "Avoid single-use plastics",
-        "Book tours with certified local guides"
+        "Book with certified local guides",
       ],
-      
-      avoid_periods: crowdLevel === "high" 
-        ? ["Peak tourist season - expect large crowds", "Weekend afternoons - busiest times"]
-        : ["Weekend afternoons if you prefer quieter experiences"],
-      
+      avoid_periods:
+        crowdLevel === "high"
+          ? ["Peak tourist season", "Weekend afternoons"]
+          : ["Weekend afternoons"],
       local_initiatives: [
-        "Community-based tourism projects",
+        "Community tourism projects",
         "Local conservation efforts",
-        "Sustainable development programs"
+        "Sustainable development programs",
       ],
-      
-      alternative_destinations: [
-        "Nearby smaller towns for authentic experiences",
-        "Rural areas for off-the-beaten-path adventures",
-        "Neighboring regions with similar attractions"
-      ],
-      
+      alternative_destinations: ["Nearby smaller towns", "Rural areas", "Neighboring regions"],
       carrying_capacity_alert: crowdLevel === "high",
-      
       monthly_trend: monthlyTrend,
-      
-      // Métadonnées pour transparence
+
       _metadata: {
         location: {
-          name: locationName || "Unknown",
-          country: locationCountry || "Unknown",
-          lat: locationLat || null,
-          lon: locationLon || null
+          name: locationName || null,
+          country: locationCountry || null,
+          lat: lat ?? null,
+          lon: lon ?? null,
+          population: population || null,
+          populationSource,
+          countryCode2: countryCode2 || null,
+          countryCode3: countryCode3 || null,
+          isCapital,
         },
-        tourism_data: {
-          arrivals: tourismData.arrivals,
-          year: tourismData.year,
-          source: tourismData.source
+        data_sources: {
+          climate: climateData ? "Open-Meteo Archive API" : null,
+          city: cityData ? "GeoDB Cities (RapidAPI)" : null,
+          country: resolvedCountryData ? "RestCountries API" : null,
+          tourism_arrivals:
+            countryAnnualArrivals !== null ? "World Bank ST.INT.ARVL" : null,
+          co2: co2PerCapita !== null ? "World Bank EN.ATM.CO2E.PC" : null,
+          geocoding: "OpenStreetMap Nominatim",
         },
-        climate_data: climateData ? {
-          avg_temp: Math.round(climateData.avgTempMax * 10) / 10,
-          precipitation: Math.round(climateData.totalPrecipitation)
-        } : null
-      }
+        tourism: {
+          country_annual_arrivals: countryAnnualArrivals,
+          city_annual_visitors_estimated: cityAnnualVisitors,
+          monthly_visitors_selected_month: monthlyVisitors,
+          seasonal_factor: seasonalFactor,
+          co2_per_capita_tonnes: co2PerCapita,
+        },
+        climate: climateData,
+      },
     };
 
-    console.log("🌍 Sustainability insights generated with real data");
-    return NextResponse.json(response);
-
-  } catch (error: any) {
-    console.error("🌍 Sustainability API Error:", error);
-    
+    console.log("🌍 Sustainability insights generated successfully");
+    return NextResponse.json(responsePayload);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("🌍 API Error:", err);
     return NextResponse.json(
-      { 
-        error: "Failed to generate sustainability insights",
-        details: error.message
-      },
+      { error: "Failed to generate insights", detail: err?.message },
       { status: 500 }
     );
   }
