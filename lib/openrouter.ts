@@ -178,44 +178,48 @@ For Tunisia: include medinas, archaeological sites, desert experiences, coastal 
   }
 }
 // ─── 3. Cultural Heritage Recognition ──────────────────────────
-export async function recognizeHeritage(input: {
-  type: "description" | "image_url";
-  value: string;
-  country_hint?: string;
+export async function getSustainabilityInsights(params: {
+  name: string;
+  country: string;
+  month: string;
+  visitor_count?: number;
+  lat?: string | number;  // Ajouté
+  lon?: string | number;  // Ajouté
 }) {
   try {
-    console.log("🏛️ recognizeHeritage called with:", { type: input.type, country_hint: input.country_hint });
-
-    const prompt = input.type === "description"
-      ? `A traveller describes this heritage site or landmark: "${input.value}"
-${input.country_hint ? `It may be in: ${input.country_hint}` : ""}
-
-Identify the site and provide rich cultural context.`
-      : `Analyze this heritage site image from ${input.country_hint || "North Africa / Mediterranean"}.
-Image URL: ${input.value}
-Identify and describe the cultural heritage site shown.`;
-
-    const fullPrompt = `${prompt}
+    console.log("🌱 getSustainabilityInsights called with:", params);
+    
+    // Vous pouvez maintenant utiliser params.lat et params.lon dans votre prompt
+    const locationInfo = params.lat && params.lon 
+      ? ` at coordinates (${params.lat}, ${params.lon})` 
+      : '';
+    
+    const prompt = `Provide sustainability and crowd management insights for "${params.name}", ${params.country}${locationInfo} in ${params.month}.
+${params.visitor_count ? `Current monthly visitors: ${params.visitor_count}` : ""}
 
 Return ONLY valid JSON. Do not include any other text, markdown, or explanations.
 
 The JSON must follow this exact structure:
 {
-  "site_name": "Name of the site",
-  "confidence": 85,
-  "country": "Country name",
-  "city": "City name",
-  "period": "Historical period",
-  "civilization": "Civilization name",
-  "description": "Detailed description",
-  "historical_context": "Historical context information",
-  "fun_facts": ["Fun fact 1", "Fun fact 2", "Fun fact 3"],
-  "visitor_tips": "Tips for visitors",
-  "nearby_sites": ["Nearby site 1", "Nearby site 2", "Nearby site 3"],
-  "best_time_to_visit": "Best time information",
-  "unesco": true,
-  "significance": "Cultural significance"
-}`;
+  "crowd_forecast": "low|moderate|high",
+  "crowd_score": 65,
+  "best_visit_times": ["Early morning (7-9am)", "Late afternoon (4-6pm)"],
+  "eco_score": 72,
+  "carbon_estimate_kg": 12.5,
+  "water_stress": "low|moderate|high",
+  "sustainability_rating": "A|B|C|D",
+  "green_practices": ["Use public transport", "Support local businesses"],
+  "responsible_tips": ["Bring reusable water bottle", "Respect local customs"],
+  "avoid_periods": ["Peak tourist season (Jul-Aug)", "Weekend afternoons"],
+  "local_initiatives": ["Beach cleanup program", "Local conservation project"],
+  "alternative_destinations": ["Nearby less-visited site 1", "Nearby less-visited site 2"],
+  "carrying_capacity_alert": false,
+  "monthly_trend": [
+    {"month": "Jan", "visitors": 1200, "eco_score": 85},
+    {"month": "Feb", "visitors": 1100, "eco_score": 87}
+  ]
+},
+
 
     // FIXED: Use the appropriate model based on input type
     const modelToUse = input.type === "image_url" 
