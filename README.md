@@ -1,4 +1,4 @@
-# 🧭 Rihla — AI Tourism Ecosystem
+# 🧭 Rihla — AI Tourism Ecosystem v2.0
 
 **رحلة** (Rihla) — An AI-powered tourism platform designed to transform how travellers discover, plan, and experience Tunisia and the broader Maghreb region.
 
@@ -24,7 +24,7 @@ Rihla tackles four interconnected tourism challenges with dedicated AI solutions
 
 ### 1. 🗺️ AI Itinerary Planner (`/itinerary`)
 - 5-step wizard: country → style → interests → generate
-- Supports Tunisia, Morocco, Algeria, Egypt, Jordan
+- Supports any country worldwide (version v2.0)
 - AI crafts day-by-day itineraries with stops, durations, local tips, accommodation, and sustainability advice
 - Budget levels: backpacker → mid-range → luxury
 - Travel styles: cultural, adventure, relaxation, family, luxury, budget
@@ -32,15 +32,16 @@ Rihla tackles four interconnected tourism challenges with dedicated AI solutions
 ### 2. 🤖 AI Travel Concierge (`/explore`)
 - Real-time chat powered by LLaMA 3.3 70B via OpenRouter
 - Expert on: Tunisian medinas, Sahara, coastal towns, food, culture, etiquette, safety
-- Country context switching (Tunisia, Morocco, Algeria, Egypt, Jordan)
+- Country context switching (Any country v2.0)
 - Sidebar with quick questions and destination shortcuts
-- Supports English, French, Arabic prompts
 
 ### 3. 🏛️ Heritage Recognition AI (`/heritage`)
+- Powered by **`nvidia/nemotron-nano-12b-v2-vl:free`** to analyze images and provide detailed results
 - Two modes: **Describe it** (text) or **Upload Image**
 - Identifies ruins, mosques, medinas, archaeological sites, monuments
 - Returns: site name, civilization, period, historical context, fun facts, visitor tips, nearby sites
-- Curated heritage library: El Jem amphitheatre, Carthage, Kairouan Great Mosque, Bardo Museum
+- Curated heritage library: El Jem Amphitheatre, Carthage, Kairouan Great Mosque, Bardo Museum
+
 
 ### 4. 🌿 Sustainability Dashboard (`/sustainability`)
 - Per-destination, per-month eco analysis
@@ -48,6 +49,8 @@ Rihla tackles four interconnected tourism challenges with dedicated AI solutions
 - 12-month visitor and eco-score trend charts (Recharts)
 - Responsible travel tips, local eco initiatives, alternative destinations
 - Carrying capacity alerts for overcrowded periods
+- Works only for Tunisian cities and some Maghreb cities.
+
 
 ---
 
