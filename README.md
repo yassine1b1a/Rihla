@@ -49,7 +49,7 @@ Rihla tackles four interconnected tourism challenges with dedicated AI solutions
 - 12-month visitor and eco-score trend charts (Recharts)
 - Responsible travel tips, local eco initiatives, alternative destinations
 - Carrying capacity alerts for overcrowded periods
-- Works only for Tunisian cities and some Maghreb cities.
+- Works worldwide (Beta Version)
 
 
 ---
