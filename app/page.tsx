@@ -429,7 +429,6 @@ export default function HomePage() {
             <Stat value="10+" label={"Destinations"} icon={MapPin} />
             <Stat value="4"   label={"UNESCO Sites"} icon={Landmark} />
             <Stat value="AI"  label={"AI-Powered Insights"} icon={Sparkles} />
-            <Stat value="3"   label={"Languages"} icon={Globe} />
           </div>
         </section>
 
