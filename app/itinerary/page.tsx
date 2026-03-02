@@ -129,7 +129,13 @@ function ItineraryVideos({ destination, country }: { destination: string; countr
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [category, setCategory] = useState("all");
 
- 
+  const categories = [
+    { id: "all", label: "All", icon: Film },
+    { id: "travel guide", label: "Guides", icon: Play },
+    { id: "culture", label: "Culture", icon: "🏛️" },
+    { id: "food", label: "Food", icon: "🍽️" },
+    { id: "adventure", label: "Adventure", icon: "🏔️" },
+  ];
 
   useEffect(() => {
     const loadVideos = async () => {
