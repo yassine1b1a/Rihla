@@ -71,22 +71,30 @@ function AuthForm() {
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      setLoading(true);
-      const { error } = await sb.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: { access_type: 'offline', prompt: 'consent' },
-        }
-      });
-      if (error) throw error;
-    } catch (e: any) {
-      setError(e.message || "Failed to authenticate with Google");
-      setLoading(false);
-    }
-  };
+ const signInWithGoogle = async () => {
+  // CRITICAL: Don't run on Chrome error pages
+  if (window.location.protocol === 'chrome-error:' || 
+      window.location.href.startsWith('chrome-error://')) {
+    console.error('Cannot authenticate from error page');
+    setError("Page failed to load. Please refresh and try again.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { access_type: 'offline', prompt: 'consent' },
+      }
+    });
+    if (error) throw error;
+  } catch (e: any) {
+    setError(e.message || "Failed to authenticate with Google");
+    setLoading(false);
+  }
+};
 
   const signInWithGithub = async () => {
     try {
