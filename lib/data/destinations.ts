@@ -1,4 +1,3 @@
-```typescript
 import type { Destination, HeritageSite } from "@/types";
 
 export const DESTINATIONS: Destination[] = [
