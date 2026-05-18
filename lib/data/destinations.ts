@@ -290,4 +290,4 @@ export const TRAVEL_INTERESTS = [
   "Art & Crafts", "Star Gazing", "Wellness & Hammam",
 ];
 
-```
+
