@@ -2,6 +2,7 @@
 
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   MapPin, Brain, Compass, Leaf, Camera, Sparkles,
@@ -85,6 +86,18 @@ function FeatureCard({ icon: Icon, title, desc, color, href, delay, t }: any) {
   );
 }
 
+/* ─── Image mapping ─── */
+const DEST_IMAGES: Record<string, string> = {
+  "sidi-bou-said": "/images/sidi_bou_said.jpg",
+  "carthage": "/images/Carthage.jpg",
+  "kairouan": "/images/Kairouan.jpg",
+  "djerba": "/images/Djerba.jpg",
+  "tataouine": "/images/Tataouin.jpg",
+  "tozeur-chott": "/images/Tozeur.jpg",
+  "tunis-medina": "/images/Medina.jpg",
+  "chefchaouen": "/images/Chefchaouen.jpg",
+};
+
 /* ─── Destination card ─── */
 function DestCard({ dest, index }: any) {
   const [hovered, setHovered] = useState(false);
@@ -96,38 +109,32 @@ function DestCard({ dest, index }: any) {
       transition={{ delay: index * 0.07 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="relative rounded-2xl overflow-hidden cursor-pointer group"
-      style={{ height: index % 3 === 0 ? "320px" : "260px" }}
+      className="rounded-2xl overflow-hidden cursor-pointer group card-glass flex flex-col"
+      style={{ height: "400px" }}
     >
-      {/* Image bg via gradient (no Next/Image needed for demo) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-night-DEFAULT"
-        style={{ zIndex: 1 }} />
-      <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
-        style={{
-          background: `linear-gradient(135deg, ${
-            dest.type === "desert" ? "#C84B31, #9A3420" :
-            dest.type === "coastal" ? "#1A7A6E, #105248" :
-            dest.type === "historical" ? "#4A4033, #252F3F" :
-            "#1C2330, #0F1419"
-          })`,
-        }}
-      />
-      {/* Zellige overlay */}
-      <div className="absolute inset-0 zellige-bg opacity-30" style={{ zIndex: 1 }} />
-
-      <div className="absolute inset-0 p-5 flex flex-col justify-end" style={{ zIndex: 2 }}>
+      <div className="relative w-full h-48 flex-shrink-0 overflow-hidden">
+        <Image
+          src={DEST_IMAGES[dest.id] || DEST_IMAGES["sidi-bou-said"]}
+          alt={dest.name}
+          fill
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
+          sizes="(max-width: 768px) 50vw, 25vw"
+        />
+        <div className="absolute inset-0 zellige-bg opacity-30" />
+      </div>
+      <div className="p-5 flex flex-col flex-1">
         {dest.unesco && (
-          <span className="self-start mb-2 text-xs px-2 py-0.5 rounded-full font-mono font-medium"
+          <span className="inline-block mb-2 text-xs px-2 py-0.5 rounded-full font-mono font-medium"
             style={{ background: "rgba(232,201,138,0.2)", color: "#E8C98A", border: "1px solid rgba(232,201,138,0.3)" }}>
             UNESCO
           </span>
         )}
-        <h3 className="font-display text-2xl text-foreground leading-tight">{dest.name}</h3>
+        <h3 className="font-display text-xl text-foreground leading-tight">{dest.name}</h3>
         {dest.name_ar && (
-          <span className="text-arabic text-sm text-sand-DEFAULT opacity-70 mt-0.5">{dest.name_ar}</span>
+          <span className="text-arabic text-sm text-sand-DEFAULT opacity-70 mt-0.5 block">{dest.name_ar}</span>
         )}
-        <p className="text-xs text-stone-mist mt-1.5 line-clamp-2 leading-relaxed">{dest.short_desc}</p>
-        <div className="flex items-center justify-between mt-3">
+        <p className="text-xs text-stone-mist mt-2 line-clamp-2 leading-relaxed">{dest.short_desc}</p>
+        <div className="flex items-center justify-between mt-auto pt-3">
           <div className="flex items-center gap-1.5 text-xs text-stone-mist">
             <MapPin className="w-3 h-3" />
             {dest.country}
