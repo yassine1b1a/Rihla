@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     console.log("Image size:", Math.round(base64Image.length / 1024), "KB");
 
     const completion = await openrouter.chat.completions.create({
-      model: "nvidia/nemotron-nano-12b-v2-vl:free",
+      model: "openrouter/auto",
       messages: [
         {
           role: "system",
