@@ -32,12 +32,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Call OpenRouter
-    console.log("📸 Calling recognizeHeritage...");
+    // Call OpenRouter with openrouter/auto
+    console.log("📸 Calling recognizeHeritage with openrouter/auto...");
     const result = await recognizeHeritage({
       type: body.type,
       value: body.value,
-      country_hint: body.country_hint || "Tunisia"
+      country_hint: body.country_hint || "Tunisia",
+      model: "openrouter/auto"  // Added this line
     });
 
     console.log("📸 Recognition successful");
